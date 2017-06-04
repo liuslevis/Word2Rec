@@ -96,9 +96,9 @@ def choose(model):
 
 
 def main():
-    # prefs = read_prefs()
-    # model = train_model(prefs)
-    # save_model(model)
+    prefs = read_prefs()
+    model = train_model(prefs)
+    save_model(model)
     model = load_model()
     # calc_item_cf(model)
     choose(model)
