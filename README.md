@@ -1,6 +1,6 @@
 # Word2vecRec
 
-## Prep
+## Setup
 
 ```
 brew install pip3
