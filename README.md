@@ -6,6 +6,7 @@
 brew install pip3
 pip3 install gensim
 git clone https://github.com/liuslevis/Word2vecRec
+cd Word2vecRec
 ```
 
 ## Usage
