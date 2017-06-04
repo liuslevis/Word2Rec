@@ -1,7 +1,16 @@
 # Word2vecRec
 
+## Prep
+
 ```
-➜  Word2vecRec git:(master) ✗ ipython3 train.py
+brew install pip3
+pip3 install gensim
+```
+
+## Usage
+
+```
+➜  Word2vecRec git:(master) ✗ python3 train.py
 choose:
      0
      1 霍乱时期的爱情
