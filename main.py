@@ -5,7 +5,9 @@ from gensim.models.word2vec import *
 
 MODEL = 'output/word2vec.model'
 PREFS = 'input/user_prefs.txt'
-SEP = ' '
+SEP   = ' '
+MAX_CHOICE = 12
+MAX_RECOMM = 12
 
 # {user:{dt1:item1, dt2:item2, ...}}
 def read_prefs(path=PREFS):
@@ -56,30 +58,41 @@ def load_model(path=MODEL):
 
 def calc_item_cf(model):
     print('基于书籍的 word2vec 协同过滤推荐')
-    for item in flatmap(model.vocab):
-        print('\n根据 %s 推荐：' % item)
-        for item_score in model.most_similar(positive=[item]):
-            item, score = item_score
-            print('\t%s %.2f' % (item, score))
+    for vocab in flatmap(model.vocab):
+        print('\n根据 %s 推荐：' % vocab)
+        for vocab_score in model.most_similar(positive=[vocab]):
+            vocab, score = vocab_score
+            print('\t%s %.2f' % (vocab, score))
 
-def print_vocabs(vocabs):
+def print_vocabs(model):
+    vocabs = list(model.vocab.keys())[:MAX_CHOICE]
     print('choose:')
+    print('\tindex\titem')
     for i in range(len(vocabs)):
-        print('\t', i, vocabs[i])
+        print('\t%d\t%s' % (i, vocabs[i]))
 
-def recomend(model, pos, neg):
+def vocab_index(vocab, model):
+    vocabs = list(model.vocab.keys())
+    return vocabs.index(vocab) if vocab in vocabs else -1
+
+def recommend(model, pos, neg):
     print('recommend:')
-    for item_score in model.most_similar(positive=list(pos), negative=list(neg)):
-        item, score = item_score
-        print('\t%s %.2f' % (item, score))
+    print('\tindex\tscore\titem')
+    most_similar = model.most_similar(positive=list(pos), negative=list(neg))
+    for i in range(len(most_similar)):
+        if i > MAX_RECOMM:
+            break
+        vocab, score = most_similar[i]
+        index = vocab_index(vocab, model)
+        print('\t%d\t%.2f\t%s' % (index, score, vocab))
     print('')
 
 def choose(model):
-    vocabs = list(model.vocab.keys())[:]
+    vocabs = list(model.vocab.keys())
     pos = set()
     neg = set()
     while True:
-        print_vocabs(vocabs)
+        print_vocabs(model)
         line = input('like:')
         if line.isdigit():
             vocab = vocabs[int(line)]
@@ -92,7 +105,7 @@ def choose(model):
             neg.add(vocab)
             print('\t + %s = %s' % (vocab, neg))
 
-        recomend(model, pos, neg)
+        recommend(model, pos, neg)
 
 
 def main():
