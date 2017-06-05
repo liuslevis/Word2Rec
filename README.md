@@ -9,6 +9,13 @@ git clone https://github.com/liuslevis/Word2vecRec
 cd Word2vecRec
 ```
 
+## Data
+
+```
+SELECT `timestamp`,vid,bookid FROM wxg_tdbank::weread_dsl_wruseroper_fdt0
+WHERE tdbank_imp_date >= '20170401' AND tdbank_imp_date <= '20170430' AND vid % 100 = 7 AND optype = 'SHELFADD'
+```
+
 ## Usage
 
 ```

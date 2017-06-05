@@ -1,13 +1,33 @@
 #-*- encoding:utf-8 -*-
 #/usr/bin/ipython3
-import sys,os
+import sys,os,time,json,urllib,shelve
 from gensim.models.word2vec import *
+import random
 
 MODEL = 'output/word2vec.model'
-PREFS = 'input/user_prefs.txt'
+PREFS = ['input/shelfadd_201704.csv', 'input/user_prefs.txt'][0]
 SEP   = ' '
 MAX_CHOICE = 12
 MAX_RECOMM = 12
+CACHE = shelve.open('cache/shelve.cache')
+
+
+
+def get_book_title(bookId):
+    def jsonObj(url, use_cache=True):
+        if use_cache and url in CACHE.keys():
+            jObj = CACHE[url] 
+            return jObj
+        time.sleep(0.05 * random.random())
+        text = urllib.request.urlopen(url).read().decode('utf-8') # a `str`; this step can't be used if data is binary
+        jObj = json.loads(text)
+        CACHE[url] = jObj
+        CACHE.sync()
+        return jObj
+    if not bookId.isdigit(): return bookId
+    url = 'http://wr.qq.com:8080/book/info?bookId=%s' % str(bookId)
+    jObj = jsonObj(url)
+    return (jObj['title'] if 'title' in jObj else '') + ' '+ (jObj['author'] if 'author' in jObj else '') 
 
 # {user:{dt1:item1, dt2:item2, ...}}
 def read_prefs(path=PREFS):
@@ -16,9 +36,10 @@ def read_prefs(path=PREFS):
         for line in f.readlines():
             parts = line.rstrip().split(',')
             if len(parts) == 3:
-                user = parts[0]
-                time = parts[1]
+                time = parts[0]
+                user = parts[1]
                 item = parts[2]
+                if time.isalpha(): continue
                 pref = prefs[user] if user in prefs else {}
                 pref.update({time:item})
                 prefs.update({user:pref})
@@ -64,18 +85,19 @@ def calc_item_cf(model):
             vocab, score = vocab_score
             print('\t%s %.2f' % (vocab, score))
 
-def print_vocabs(model):
-    vocabs = list(model.vocab.keys())[:MAX_CHOICE]
+def print_vocabs(model, shuffle=False):
+    vocabs = list(model.vocab.keys())
     print('choose:')
     print('\tindex\titem')
-    for i in range(len(vocabs)):
-        print('\t%d\t%s' % (i, vocabs[i]))
+    li = random.sample(list(range(len(vocabs))), MAX_CHOICE) if shuffle else list(range(MAX_CHOICE))
+    for i in li:
+        print('\t%d\t%s' % (i, get_book_title(vocabs[i])))
 
 def vocab_index(vocab, model):
     vocabs = list(model.vocab.keys())
     return vocabs.index(vocab) if vocab in vocabs else -1
 
-def recommend(model, pos, neg):
+def print_recommend(model, pos, neg):
     print('recommend:')
     print('\tindex\tscore\titem')
     most_similar = model.most_similar(positive=list(pos), negative=list(neg))
@@ -84,34 +106,47 @@ def recommend(model, pos, neg):
             break
         vocab, score = most_similar[i]
         index = vocab_index(vocab, model)
-        print('\t%d\t%.2f\t%s' % (index, score, vocab))
+        print('\t%d\t%.2f\t%s' % (index, score, get_book_title(vocab)))
     print('')
 
 def choose(model):
     vocabs = list(model.vocab.keys())
     pos = set()
     neg = set()
+    shuffle = True
+    print_vocabs(model, shuffle)
     while True:
-        print_vocabs(model)
+        line = input('shuffle:(y/[n])')
+        shuffle = line == 'y'
+        if shuffle:
+            print_vocabs(model, shuffle)
+            continue
+
         line = input('like:')
-        if line.isdigit():
-            vocab = vocabs[int(line)]
-            pos.add(vocab)
-            print('\t + %s = %s' % (vocab, pos))
+        parts = line.split()
+        for part in parts:
+            if part.isdigit():
+                vocab = vocabs[int(part)]
+                pos.add(vocab)
+        print('\t%s' % (list(map(lambda x:get_book_title(x), pos))))
 
         line = input('hate:')
-        if line.isdigit():
-            vocab = vocabs[int(line)]
-            neg.add(vocab)
-            print('\t + %s = %s' % (vocab, neg))
-
-        recommend(model, pos, neg)
+        parts = line.split()
+        for part in parts:
+            if part.isdigit():
+                vocab = vocabs[int(part)]
+                neg.add(vocab)
+        print('\t%s' % (list(map(lambda x:get_book_title(x), neg))))
+        
+        if pos or neg:
+            print_recommend(model, pos, neg)
 
 
 def main():
+    random.seed(99)
     prefs = read_prefs()
-    model = train_model(prefs)
-    save_model(model)
+    # model = train_model(prefs)
+    # save_model(model)
     model = load_model()
     # calc_item_cf(model)
     choose(model)
