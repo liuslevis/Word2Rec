@@ -2,12 +2,8 @@
 <head>
     <link charset="utf-8" rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<title>Hello from Flask</title>
-{% if vid %}
-  <h1>Hello {{ vid }}!</h1>
-{% else %}
-  <h1>Hello World!</h1>
-{% endif %}
+<title>Book Recommend</title>
+<a href="/"><h1>Book Recommend</h1></a>
 
 <h2>recent</h2>
 <div class="scroller-wrapper">
@@ -39,7 +35,8 @@
     </div>
 </div>
 
-<h2>choose</h2>
+<h2 class="choose">choose</h2>
+<input class="shuffle" type="button" value="shuffle" onClick="window.location.reload()">
 <div class="scroller-wrapper">
     <div class="scroller">
         {% for bookinfo in random_books %}

@@ -2,12 +2,18 @@ from flask import Flask,request,render_template,redirect,url_for
 from flask.views import View
 from cli import *
 
+model = load_model()
 app = Flask(__name__)
 
-
-def calc_redirect_url_likes_hates(likes_param, likes_str, hates_param, hates_str):
+# @param request {'like':'101,102', 'hate':'201,202'}
+# @param like_str '103,104'
+# @param hate_str '203,204'
+# @return '/like/101,102,103,104/hate/201,202,203,204'
+def calc_redirect_url_likes_hates(request, likes_str, hates_str):
     likes = []
     hates = []
+    likes_param = request.args.get('like') 
+    hates_param = request.args.get('hate')
     likes += likes_param.split(',') if likes_param else []
     hates += hates_param.split(',') if hates_param else []
     likes += likes_str.split(',') if likes_str else []
@@ -22,6 +28,10 @@ def calc_redirect_url_likes_hates(likes_param, likes_str, hates_param, hates_str
     else:
         return None, likes, hates
 
+@app.route('/')
+def index():
+    return redirect('/vid/0')
+
 # http://127.0.0.1:5000/vid/2000007/like/101,202/hate/303,404
 @app.route('/vid/<vid>')
 @app.route('/vid/<vid>/like/<likes_str>')
@@ -29,22 +39,21 @@ def calc_redirect_url_likes_hates(likes_param, likes_str, hates_param, hates_str
 @app.route('/vid/<vid>/like/<likes_str>/hate/<hates_str>')
 @app.route('/vid/<vid>/hate/<hates_str>/like/<likes_str>')
 def show_recommend(vid=None, likes_str=None, hates_str=None):
-    likes_param = request.args.get('like') 
-    hates_param = request.args.get('hate')
-    url, likes, hates = calc_redirect_url_likes_hates(likes_param, likes_str, hates_param, hates_str)
+    url, likes, hates = calc_redirect_url_likes_hates(request, likes_str, hates_str)
+    likes = list(set(likes) - set(hates))
+    hates = list(set(hates) - set(likes))
+
     if url:
         return redirect('vid/%s' % vid + url)
 
-    model = load_model()
-    
-    recommend_books = []
-    random_books = []
-    recent_books = get_recent_books(vid)[:10]
+    recent_books = []
+    if vid and vid != '0':
+        recent_books = get_recent_books(vid)[:10]
+        if not likes:
+            likes = list(map(lambda x:x['bookId'], recent_books))[:3]
 
-    if vid and not likes:
-        likes = list(map(lambda x:x['bookId'], recent_books))
-    
     random_books = get_random_books(model)
+
     recommend_books = calc_recommend_books(model, likes, hates)
 
     return render_template('index.html', vid=vid, 

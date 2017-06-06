@@ -12,7 +12,7 @@ CACHE = {}#shelve.open('./shelve.cache')
 MAX_CHOICE_CLI = 12
 MAX_RECOMM_CLI = 12
 MAX_RECOMM_WEB = 30
-MAX_CHOICE_WEB = 30
+MAX_CHOICE_WEB = 5
 
 def jsonObj(url, use_cache=True):
     if use_cache and url in CACHE.keys():
@@ -137,6 +137,7 @@ def print_recommend(model, pos, neg):
     print('')
 
 def calc_recommend_books(model, pos, neg):
+    if len(pos) + len(neg) == 0: return []
     ret = []
     vocabs = list(model.vocab.keys())
     pos = set(filter(lambda x:x in vocabs, pos))
