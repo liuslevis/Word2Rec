@@ -1,0 +1,45 @@
+.scroller-wrapper {
+    overflow: scroll;
+    width:100%;
+
+}
+.scroller {
+}
+
+.book {
+    display: table-cell;
+    padding-right: 1em;
+}
+.cover {
+    width: 70px;
+    height: 100px;
+}
+
+.title {
+    font-size: 0.5em;
+    max-width: 70px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.author {
+    font-size: 0.5em;
+    max-width: 70px;
+    color: #777;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.like {
+    display: inline;
+    color:rgb(0,0,0.5);
+    font-size: 0.5em;
+}
+
+.hate {
+    display: inline;
+    color:rgb(0,0,0.5);
+    font-size: 0.5em;
+}

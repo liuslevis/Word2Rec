@@ -1,0 +1,85 @@
+<!doctype html>
+<head>
+    <link charset="utf-8" rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<title>Hello from Flask</title>
+{% if vid %}
+  <h1>Hello {{ vid }}!</h1>
+{% else %}
+  <h1>Hello World!</h1>
+{% endif %}
+
+<h2>recent</h2>
+<div class="scroller-wrapper">
+    <div class="scroller">
+        {% for bookinfo in recent_books %}
+        <div class="book">
+            <a href="weread://bDetail?bId={{ bookinfo['bookId'] }}"><img class="cover" src="{{ bookinfo['cover'] }}" /></a>
+            <p class='title'>{{ bookinfo['title'] }}</p>
+            <p class='author'>{{ bookinfo['author'] }}</p>
+            <a href="?like={{ bookinfo['bookId'] }}" class="like">like</a>
+            <a href="?hate={{ bookinfo['bookId'] }}" class="hate">hate</a>
+        </div>
+        {% endfor%}
+    </div>
+</div>
+
+<h2>recommend</h2>
+<div class="scroller-wrapper">
+    <div class="scroller">
+        {% for bookinfo in recommend_books %}
+        <div class="book">
+            <a href="weread://bDetail?bId={{ bookinfo['bookId'] }}"><img class="cover" src="{{ bookinfo['cover'] }}" /></a>
+            <p class='title'>{{ bookinfo['title'] }}</p>
+            <p class='author'>{{ bookinfo['author'] }}</p>
+            <a href="?like={{ bookinfo['bookId'] }}" class="like">like</a>
+            <a href="?hate={{ bookinfo['bookId'] }}" class="hate">hate</a>
+        </div>
+        {% endfor%}
+    </div>
+</div>
+
+<h2>choose</h2>
+<div class="scroller-wrapper">
+    <div class="scroller">
+        {% for bookinfo in random_books %}
+        <div class="book">
+            <a href="weread://bDetail?bId={{ bookinfo['bookId'] }}"><img class="cover" src="{{ bookinfo['cover'] }}" /></a>
+            <p class='title'>{{ bookinfo['title'] }}</p>
+            <p class='author'>{{ bookinfo['author'] }}</p>
+            <a href="?like={{ bookinfo['bookId'] }}" class="like">like</a>
+            <a href="?hate={{ bookinfo['bookId'] }}" class="hate">hate</a>
+        </div>
+        {% endfor%}
+    </div>
+</div>
+
+<h2>like</h2>
+<div class="scroller-wrapper">
+    <div class="scroller">
+        {% for bookinfo in like_books %}
+        <div class="book">
+            <a href="weread://bDetail?bId={{ bookinfo['bookId'] }}"><img class="cover" src="{{ bookinfo['cover'] }}" /></a>
+            <p class='title'>{{ bookinfo['title'] }}</p>
+            <p class='author'>{{ bookinfo['author'] }}</p>
+            <a href="?like={{ bookinfo['bookId'] }}" class="like">like</a>
+            <a href="?hate={{ bookinfo['bookId'] }}" class="hate">hate</a>
+        </div>
+        {% endfor%}
+    </div>
+</div>
+
+<h2>hate</h2>
+<div class="scroller-wrapper">
+    <div class="scroller">
+        {% for bookinfo in hate_books %}
+        <div class="book">
+            <a href="weread://bDetail?bId={{ bookinfo['bookId'] }}"><img class="cover" src="{{ bookinfo['cover'] }}" /></a>
+            <p class='title'>{{ bookinfo['title'] }}</p>
+            <p class='author'>{{ bookinfo['author'] }}</p>
+            <a href="?like={{ bookinfo['bookId'] }}" class="like">like</a>
+            <a href="?hate={{ bookinfo['bookId'] }}" class="hate">hate</a>
+        </div>
+        {% endfor%}
+    </div>
+</div>
