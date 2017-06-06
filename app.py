@@ -4,30 +4,36 @@ from cli import *
 
 app = Flask(__name__)
 
+
+def calc_redirect_url_likes_hates(likes_param, likes_str, hates_param, hates_str):
+    likes = []
+    hates = []
+    likes += likes_param.split(',') if likes_param else []
+    hates += hates_param.split(',') if hates_param else []
+    likes += likes_str.split(',') if likes_str else []
+    hates += hates_str.split(',') if hates_str else []
+    url = ''
+    if likes:
+        url += '/like/' + ','.join(likes)
+    if hates:
+        url += '/hate/' + ','.join(hates)
+    if likes_param or hates_param:
+        return url, likes, hates
+    else:
+        return None, likes, hates
+
 # http://127.0.0.1:5000/vid/2000007/like/101,202/hate/303,404
-@app.route('/')
 @app.route('/vid/<vid>')
 @app.route('/vid/<vid>/like/<likes_str>')
 @app.route('/vid/<vid>/hate/<hates_str>')
 @app.route('/vid/<vid>/like/<likes_str>/hate/<hates_str>')
 @app.route('/vid/<vid>/hate/<hates_str>/like/<likes_str>')
 def show_recommend(vid=None, likes_str=None, hates_str=None):
-    likes_param = request.form['like']
-    hates_param = request.form['hate']
-    print('debug 0', request.form)
-    print('debug 1', hates_param)
-    likes = likes_str.split(',') if likes_str else [] + likes_param.split(',') if likes_param else []
-    hates = hates_str.split(',') if hates_str else [] + hates_param.split(',') if hates_param else []
-    print('debug 2', hates_str)
-    print('debug 3', hates)
-
-    if likes_param and not hates_param:
-        return redirect('/vid/%s/like/%s' % (vid, ','.join(likes)), code=302)
-    elif not likes_param and hates_param:
-        return redirect('/vid/%s/hate/%s' % (vid, ','.join(hates)), code=302)
-    elif likes_param and hates_param:
-        return redirect('/vid/%s/like/%s/hate/%s' % (vid, ','.join(likes), ','.join(hates)), code=302)
-
+    likes_param = request.args.get('like') 
+    hates_param = request.args.get('hate')
+    url, likes, hates = calc_redirect_url_likes_hates(likes_param, likes_str, hates_param, hates_str)
+    if url:
+        return redirect('vid/%s' % vid + url)
 
     model = load_model()
     
