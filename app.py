@@ -12,9 +12,9 @@ app = Flask(__name__)
 @app.route('/vid/<vid>/like/<likes_str>/hate/<hates_str>')
 @app.route('/vid/<vid>/hate/<hates_str>/like/<likes_str>')
 def show_recommend(vid=None, likes_str=None, hates_str=None):
-    likes_param = request.args.get('like') if request.args.get('like') else None
-    hates_param = request.args.get('hate') if request.args.get('hate') else None
-    print('debug 0', request.args)
+    likes_param = request.form['like']
+    hates_param = request.form['hate']
+    print('debug 0', request.form)
     print('debug 1', hates_param)
     likes = likes_str.split(',') if likes_str else [] + likes_param.split(',') if likes_param else []
     hates = hates_str.split(',') if hates_str else [] + hates_param.split(',') if hates_param else []

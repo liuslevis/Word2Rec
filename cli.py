@@ -47,13 +47,13 @@ def get_book_info(bookId):
     bookId = str(bookId)
     if not bookId.isdigit(): return None
     url = 'http://wr.qq.com:8080/book/info?bookId=%s' % bookId
-    return jsonObj(url, use_cache=True)
+    return jsonObj(url)
 
 def get_book_title(bookId):
     bookId = str(bookId)
     if not bookId.isdigit(): return bookId
     url = 'http://wr.qq.com:8080/book/info?bookId=%s' % bookId
-    jObj = jsonObj(url, use_cache=True)
+    jObj = jsonObj(url)
     return (jObj['title'] if 'title' in jObj else '') + ' '+ (jObj['author'] if 'author' in jObj else '') 
 
 # {user:{dt1:item1, dt2:item2, ...}}
