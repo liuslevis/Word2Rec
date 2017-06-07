@@ -2,25 +2,10 @@
 <head>
     <link charset="utf-8" rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<title>Book Recommend</title>
-<a href="/"><h1>Book Recommend</h1></a>
+<title>书籍推荐</title>
+<a href="/"><h1>书籍推荐</h1></a>
 
-<h2>recent</h2>
-<div class="scroller-wrapper">
-    <div class="scroller">
-        {% for bookinfo in recent_books %}
-        <div class="book">
-            <a href="weread://bDetail?bId={{ bookinfo['bookId'] }}"><img class="cover" src="{{ bookinfo['cover'] }}" /></a>
-            <p class='title'>{{ bookinfo['title'] }}</p>
-            <p class='author'>{{ bookinfo['author'] }}</p>
-            <a href="?like={{ bookinfo['bookId'] }}" class="like">like</a>
-            <a href="?hate={{ bookinfo['bookId'] }}" class="hate">hate</a>
-        </div>
-        {% endfor%}
-    </div>
-</div>
-
-<h2>recommend</h2>
+<h2>为你推荐</h2>
 <div class="scroller-wrapper">
     <div class="scroller">
         {% for bookinfo in recommend_books %}
@@ -35,23 +20,8 @@
     </div>
 </div>
 
-<h2 class="choose">choose</h2>
-<input class="shuffle" type="button" value="shuffle" onClick="window.location.reload()">
-<div class="scroller-wrapper">
-    <div class="scroller">
-        {% for bookinfo in random_books %}
-        <div class="book">
-            <a href="weread://bDetail?bId={{ bookinfo['bookId'] }}"><img class="cover" src="{{ bookinfo['cover'] }}" /></a>
-            <p class='title'>{{ bookinfo['title'] }}</p>
-            <p class='author'>{{ bookinfo['author'] }}</p>
-            <a href="?like={{ bookinfo['bookId'] }}" class="like">like</a>
-            <a href="?hate={{ bookinfo['bookId'] }}" class="hate">hate</a>
-        </div>
-        {% endfor%}
-    </div>
-</div>
-
-<h2>like</h2>
+<h2>基于你···</h2>
+<h2>喜欢</h2>
 <div class="scroller-wrapper">
     <div class="scroller">
         {% for bookinfo in like_books %}
@@ -67,7 +37,7 @@
     </div>
 </div>
 
-<h2>hate</h2>
+<h2>不喜欢</h2>
 <div class="scroller-wrapper">
     <div class="scroller">
         {% for bookinfo in hate_books %}
@@ -82,3 +52,35 @@
         {% endfor%}
     </div>
 </div>
+
+<h2>最近阅读</h2>
+<div class="scroller-wrapper">
+    <div class="scroller">
+        {% for bookinfo in recent_books %}
+        <div class="book">
+            <a href="weread://bDetail?bId={{ bookinfo['bookId'] }}"><img class="cover" src="{{ bookinfo['cover'] }}" /></a>
+            <p class='title'>{{ bookinfo['title'] }}</p>
+            <p class='author'>{{ bookinfo['author'] }}</p>
+            <a href="?like={{ bookinfo['bookId'] }}" class="like">like</a>
+            <a href="?hate={{ bookinfo['bookId'] }}" class="hate">hate</a>
+        </div>
+        {% endfor%}
+    </div>
+</div>
+
+<h2 class="choose">更多</h2>
+<input class="shuffle" type="button" value="换一批" onClick="window.location.reload()">
+<div class="scroller-wrapper">
+    <div class="scroller">
+        {% for bookinfo in random_books %}
+        <div class="book">
+            <a href="weread://bDetail?bId={{ bookinfo['bookId'] }}"><img class="cover" src="{{ bookinfo['cover'] }}" /></a>
+            <p class='title'>{{ bookinfo['title'] }}</p>
+            <p class='author'>{{ bookinfo['author'] }}</p>
+            <a href="?like={{ bookinfo['bookId'] }}" class="like">like</a>
+            <a href="?hate={{ bookinfo['bookId'] }}" class="hate">hate</a>
+        </div>
+        {% endfor%}
+    </div>
+</div>
+
