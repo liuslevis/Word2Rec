@@ -2,8 +2,12 @@ from flask import Flask,request,render_template,redirect,url_for
 from flask.views import View
 from cli import *
 
-model = load_model()
 app = Flask(__name__)
+
+prefs = read_prefs()
+model = train_model(prefs)
+save_model(model)
+model = load_model()
 
 # @param request {'like':'101,102', 'hate':'201,202', 'remove':'201'}
 # @param like_str '103,104'
@@ -71,5 +75,7 @@ def show_recommend(vid=None, likes_str=None, hates_str=None):
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True)
+    # app.run(debug=True, host='0.0.0.0') # public
     # app.run()
+

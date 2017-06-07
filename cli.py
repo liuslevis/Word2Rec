@@ -1,18 +1,19 @@
 #-*- encoding:utf-8 -*-
 #/usr/bin/ipython3
-import sys,os,time,json,urllib,shelve
-from gensim.models.word2vec import *
-import random
+import sys,os,time,json,urllib,shelve,random
+import gensim
 
 MODEL = 'output/word2vec.model'
-PREFS = ['input/shelfadd_201704.csv', 'input/user_prefs.txt'][0]
+PREFS = ['input/shelfadd_201703_201704.csv', 'input/shelfadd_201704.csv', 'input/user_prefs.txt'][0]
+HOTLIST = 'input/wrbid_hotlist.txt'
 SEP   = ' '
 CACHE = {}#shelve.open('./shelve.cache')
 
 MAX_CHOICE_CLI = 12
 MAX_RECOMM_CLI = 12
 MAX_RECOMM_WEB = 30
-MAX_CHOICE_WEB = 5
+MAX_CHOICE_WEB_HOT_BOOK = 3
+MAX_CHOICE_WEB_COLD_BOOK = 2
 
 def jsonObj(url, use_cache=True):
     if use_cache and url in CACHE.keys():
@@ -56,6 +57,17 @@ def get_book_title(bookId):
     jObj = jsonObj(url)
     return (jObj['title'] if 'title' in jObj else '') + ' '+ (jObj['author'] if 'author' in jObj else '') 
 
+def read_hotlist_bookids():
+    ret = []
+    with open(HOTLIST) as f:
+        for line in f.readlines():
+            parts = line.rstrip().split()
+            if len(parts) == 2:
+                bookid = parts[0]
+                rank = parts[1]
+                ret.append(bookid)
+    return ret
+
 # {user:{dt1:item1, dt2:item2, ...}}
 def read_prefs(path=PREFS):
     prefs = {}
@@ -95,14 +107,14 @@ def flatmap(vocab):
 def train_model(prefs):
     sents = sents_from_prefs(prefs)
     vocab = [s.split(SEP) for s in sents]
-    model = Word2Vec(vocab, size=100, window=5, min_count=1, workers=4)
+    model = gensim.models.word2vec.Word2Vec(vocab, size=50, window=5, min_count=1, workers=4)
     return model
 
 def save_model(model, path=MODEL):
-    model.save_word2vec_format(path, binary=False)
+    model.wv.save_word2vec_format(path, binary=False)
 
 def load_model(path=MODEL):
-    return Word2Vec.load_word2vec_format(path, binary=False)
+    return gensim.models.KeyedVectors.load_word2vec_format(path, binary=False)
 
 def calc_item_cf(model):
     print('基于书籍的 word2vec 协同过滤推荐')
@@ -150,14 +162,17 @@ def calc_recommend_books(model, pos, neg):
         index = vocab_index(vocab, model)
         bookinfo = get_book_info(vocab)
         if bookinfo:
-            bookinfo['score'] = ret
+            bookinfo['score'] = score
             ret.append(bookinfo)
     return ret
 
 def get_random_books(model):
     ret = []
+    hotlist = read_hotlist_bookids()
     vocabs = list(model.vocab.keys())
-    for bookid in random.sample(vocabs, MAX_CHOICE_WEB):
+    for bookid in random.sample(hotlist, MAX_CHOICE_WEB_HOT_BOOK):
+        ret.append(get_book_info(bookid))
+    for bookid in random.sample(vocabs, MAX_CHOICE_WEB_COLD_BOOK):
         ret.append(get_book_info(bookid))
     return ret
     

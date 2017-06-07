@@ -5,7 +5,7 @@
 <title>书籍推荐</title>
 <a href="/"><h1>书籍推荐</h1></a>
 
-<h2>为你推荐</h2>
+<h2>基于喜欢／不喜欢，为你推荐</h2>
 <div class="scroller-wrapper">
     <div class="scroller">
         {% for bookinfo in recommend_books %}
@@ -13,6 +13,7 @@
             <a href="weread://bDetail?bId={{ bookinfo['bookId'] }}"><img class="cover" src="{{ bookinfo['cover'] }}" /></a>
             <p class='title'>{{ bookinfo['title'] }}</p>
             <p class='author'>{{ bookinfo['author'] }}</p>
+            <p class='score'>{{ '%.4f' % bookinfo['score'] }}</p>
             <a href="?like={{ bookinfo['bookId'] }}" class="like">like</a>
             <a href="?hate={{ bookinfo['bookId'] }}" class="hate">hate</a>
         </div>
@@ -20,7 +21,6 @@
     </div>
 </div>
 
-<h2>基于你···</h2>
 <h2>喜欢</h2>
 <div class="scroller-wrapper">
     <div class="scroller">

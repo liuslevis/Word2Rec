@@ -1,4 +1,6 @@
-# Word2vecRec
+# Word2rec
+
+A demo of book recommend system.
 
 ## Setup
 
@@ -12,14 +14,24 @@ cd Word2vecRec
 ## Data
 
 ```
+input/shelfadd_201704.csv 4M
 SELECT `timestamp`,vid,bookid FROM wxg_tdbank::weread_dsl_wruseroper_fdt0
 WHERE tdbank_imp_date >= '20170401' AND tdbank_imp_date <= '20170430' AND vid % 100 = 7 AND optype = 'SHELFADD'
+
+input/shelfadd_201703_201704.csv 8M
+SELECT `timestamp`,vid,bookid FROM wxg_tdbank::weread_dsl_wruseroper_fdt0
+WHERE tdbank_imp_date >= '20170301' AND tdbank_imp_date <= '20170430' AND vid % 100 = 7 AND optype = 'SHELFADD'
+
 ```
 
 ## Usage
 
 ```
-➜  Word2vecRec git:(master) ✗ ipython3 main.py
+➜  Word2vecRec git:(master) ✗ ipython3 app.py
+```
+
+```
+➜  Word2vecRec git:(master) ✗ ipython3 cli.py
 choose:
     index   item
     0
