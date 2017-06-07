@@ -5,28 +5,35 @@ from cli import *
 model = load_model()
 app = Flask(__name__)
 
-# @param request {'like':'101,102', 'hate':'201,202'}
+# @param request {'like':'101,102', 'hate':'201,202', 'remove':'201'}
 # @param like_str '103,104'
 # @param hate_str '203,204'
-# @return '/like/101,102,103,104/hate/201,202,203,204'
-def calc_redirect_url_likes_hates(request, likes_str, hates_str):
+# @return '/like/101,102,103,104/hate/202,203,204'
+def calc_redirect_url_likes_hates_removes(request, likes_str, hates_str):
     likes = []
     hates = []
+    removes = []
+    
     likes_param = request.args.get('like') 
     hates_param = request.args.get('hate')
+    removes_param = request.args.get('remove')
+
     likes += likes_param.split(',') if likes_param else []
     hates += hates_param.split(',') if hates_param else []
+    removes += removes_param.split(',') if removes_param else []
+
     likes += likes_str.split(',') if likes_str else []
     hates += hates_str.split(',') if hates_str else []
+
     url = ''
     if likes:
         url += '/like/' + ','.join(likes)
     if hates:
         url += '/hate/' + ','.join(hates)
     if likes_param or hates_param:
-        return url, likes, hates
+        return url, likes, hates, removes
     else:
-        return None, likes, hates
+        return None, likes, hates, removes
 
 @app.route('/')
 def index():
@@ -39,9 +46,9 @@ def index():
 @app.route('/vid/<vid>/like/<likes_str>/hate/<hates_str>')
 @app.route('/vid/<vid>/hate/<hates_str>/like/<likes_str>')
 def show_recommend(vid=None, likes_str=None, hates_str=None):
-    url, likes, hates = calc_redirect_url_likes_hates(request, likes_str, hates_str)
-    likes = list(set(likes) - set(hates))
-    hates = list(set(hates) - set(likes))
+    url, likes, hates, removes = calc_redirect_url_likes_hates_removes(request, likes_str, hates_str)
+    likes = list(set(likes) - set(hates) - set(removes))
+    hates = list(set(hates) - set(likes) - set(removes))
 
     if url:
         return redirect('vid/%s' % vid + url)

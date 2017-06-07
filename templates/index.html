@@ -61,6 +61,7 @@
             <p class='author'>{{ bookinfo['author'] }}</p>
             <a href="?like={{ bookinfo['bookId'] }}" class="like">like</a>
             <a href="?hate={{ bookinfo['bookId'] }}" class="hate">hate</a>
+            <a href="?remove={{ bookinfo['bookId'] }}" class="remove">X</a>
         </div>
         {% endfor%}
     </div>
@@ -76,6 +77,7 @@
             <p class='author'>{{ bookinfo['author'] }}</p>
             <a href="?like={{ bookinfo['bookId'] }}" class="like">like</a>
             <a href="?hate={{ bookinfo['bookId'] }}" class="hate">hate</a>
+            <a href="?remove={{ bookinfo['bookId'] }}" class="remove">X</a>
         </div>
         {% endfor%}
     </div>
