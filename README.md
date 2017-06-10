@@ -18,9 +18,13 @@ input/shelfadd_201704.csv 4M
 SELECT `timestamp`,vid,bookid FROM wxg_tdbank::weread_dsl_wruseroper_fdt0
 WHERE tdbank_imp_date >= '20170401' AND tdbank_imp_date <= '20170430' AND vid % 100 = 7 AND optype = 'SHELFADD'
 
-input/shelfadd_201703_201704.csv 8M
+input/shelfadd_201703_201704.csv 10M
 SELECT `timestamp`,vid,bookid FROM wxg_tdbank::weread_dsl_wruseroper_fdt0
 WHERE tdbank_imp_date >= '20170301' AND tdbank_imp_date <= '20170430' AND vid % 100 = 7 AND optype = 'SHELFADD'
+
+input/shelfadd_201703_201704.csv 16M?
+SELECT `timestamp`,vid,bookid FROM wxg_tdbank::weread_dsl_wruseroper_fdt0
+WHERE tdbank_imp_date >= '20170101' AND tdbank_imp_date <= '20170430' AND vid % 100 = 7 AND optype = 'SHELFADD'
 
 ```
 
@@ -63,3 +67,5 @@ recommend:
     3   -0.06   百年孤独
     10  -0.08   从0到1
 ```
+
+http://wo4.weread.qq.com/word2rec/vid/2000007/like/840704?remove=840704

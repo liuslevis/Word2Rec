@@ -2,17 +2,22 @@ from flask import Flask,request,render_template,redirect,url_for
 from flask.views import View
 from cli import *
 
+BASE_URL = '/word2rec'
+
 app = Flask(__name__)
 
-prefs = read_prefs()
-model = train_model(prefs)
-save_model(model)
-model = load_model()
+model = None
+DEBUG = True
+TRAIN_MODEL = False
 
-# @param request {'like':'101,102', 'hate':'201,202', 'remove':'201'}
-# @param like_str '103,104'
-# @param hate_str '203,204'
-# @return '/like/101,102,103,104/hate/202,203,204'
+if TRAIN_MODEL:
+    prefs = read_prefs()
+    model = train_model(prefs)
+    save_model(model)
+    model = load_model()
+else:
+    model = load_model()
+
 def calc_redirect_url_likes_hates_removes(request, likes_str, hates_str):
     likes = []
     hates = []
@@ -42,24 +47,24 @@ def calc_redirect_url_likes_hates_removes(request, likes_str, hates_str):
     else:
         return None, likes, hates, removes
 
-@app.route('/')
+@app.route(BASE_URL)
 def index():
-    return redirect('/vid/0')
+    return redirect(BASE_URL + '/vid/0')
 
 # http://127.0.0.1:5000/vid/2000007/like/101,202/hate/303,404
-@app.route('/vid/<vid>')
-@app.route('/vid/<vid>/like/<likes_str>')
-@app.route('/vid/<vid>/hate/<hates_str>')
-@app.route('/vid/<vid>/like/<likes_str>/hate/<hates_str>')
-@app.route('/vid/<vid>/hate/<hates_str>/like/<likes_str>')
+@app.route(BASE_URL + '/vid/<vid>')
+@app.route(BASE_URL + '/vid/<vid>/like/<likes_str>')
+@app.route(BASE_URL + '/vid/<vid>/hate/<hates_str>')
+@app.route(BASE_URL + '/vid/<vid>/like/<likes_str>/hate/<hates_str>')
+@app.route(BASE_URL + '/vid/<vid>/hate/<hates_str>/like/<likes_str>')
 def show_recommend(vid=None, likes_str=None, hates_str=None):
     url, likes, hates, removes = calc_redirect_url_likes_hates_removes(request, likes_str, hates_str)
     if url:
-        return redirect('vid/%s' % vid + url)
+        return redirect(BASE_URL + '/vid/%s' % vid + url)
 
     recent_books = []
     if vid and vid != '0':
-        recent_books = get_recent_books(vid)[:10]
+        recent_books = get_recent_books(vid)
 
     random_books = get_random_books(model)
 
@@ -71,11 +76,10 @@ def show_recommend(vid=None, likes_str=None, hates_str=None):
         random_books=random_books,
         like_books=list(map(lambda x:get_book_info(x), likes)),
         hate_books=list(map(lambda x:get_book_info(x), hates)),
+        base_url=BASE_URL
         )
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
-    # app.run(debug=True, host='0.0.0.0') # public
-    # app.run()
+    app.run(debug=DEBUG)
 

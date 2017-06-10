@@ -3,17 +3,37 @@
 import sys,os,time,json,urllib,shelve,random
 import gensim
 
-MODEL = 'output/word2vec.model'
-PREFS = ['input/shelfadd_201703_201704.csv', 'input/shelfadd_201704.csv', 'input/user_prefs.txt'][0]
+CACHE   = shelve.open('./cache/shelve.cache') if sys.platform == 'darwin' else {}
+MODEL   = 'output/word2vec.model'
+PREFS   = ['input/shelfadd_201701_201704_mod100.csv', 'input/shelfadd_201703_201704_mod100.csv', 'input/shelfadd_201704_mod100.csv', 'input/user_prefs.txt'][0]
 HOTLIST = 'input/wrbid_hotlist.txt'
-SEP   = ' '
-CACHE = {}#shelve.open('./shelve.cache')
+SEP     = ' '
+
+W2V_SIZE = 500
+W2V_WINDOW = 5 # avg user read 10 book in 2 month
+W2V_MIN_COUNT = 1 
 
 MAX_CHOICE_CLI = 12
 MAX_RECOMM_CLI = 12
 MAX_RECOMM_WEB = 30
 MAX_CHOICE_WEB_HOT_BOOK = 3
 MAX_CHOICE_WEB_COLD_BOOK = 2
+MAX_RECENT_BOOKS = 20
+
+def get_col_vals(csvpath, colname, sep, outpath=None):
+    ret = []
+    with open(csvpath) as f:
+        cols = None
+        for line in f.readlines():
+            if cols is None:
+                cols = line.rstrip().split(sep)
+                continue
+            val = line.rstrip().split(sep)[cols.index(colname)]
+            ret.append(val)
+    if outpath:
+        with open(outpath, 'w') as f:
+            f.write('\n'.join(ret))
+    return set(ret)
 
 def jsonObj(url, use_cache=True):
     if use_cache and url in CACHE.keys():
@@ -42,7 +62,7 @@ def get_recent_books(vid):
                 and 'http://res.weread.qq.com/publicfetch?' not in bookinfo['cover']:
                 ret.append(bookinfo)
     ret.sort(key=lambda x:x['readUpdateTime'], reverse=True)
-    return ret
+    return ret[:MAX_RECENT_BOOKS]
 
 def get_book_info(bookId):
     bookId = str(bookId)
@@ -56,6 +76,18 @@ def get_book_title(bookId):
     url = 'http://wr.qq.com:8080/book/info?bookId=%s' % bookId
     jObj = jsonObj(url)
     return (jObj['title'] if 'title' in jObj else '') + ' '+ (jObj['author'] if 'author' in jObj else '') 
+
+def cache_bookinfos():
+    vid = get_col_vals('input/shelfadd_201701_201704_mod100.csv', 'vid', ',', 'input/vids_201701_201704_mod100.txt')
+    b1 = get_col_vals('input/wrbid_hotlist.txt', 'bookid', ',')
+    b2 = get_col_vals('input/wrbid_tag.txt', 'bookid', ',')
+    b3 = get_col_vals('input/shelfadd_201701_201704_mod100.csv', 'bookid', ',')
+    for bookids in [b3.intersection(b2), b3 - b2, b1]:
+        cnt = 0
+        for bookid in bookids:
+            cnt += 1
+            print(cnt, bookid)
+            get_book_info(bookid)
 
 def read_hotlist_bookids():
     ret = []
@@ -107,7 +139,7 @@ def flatmap(vocab):
 def train_model(prefs):
     sents = sents_from_prefs(prefs)
     vocab = [s.split(SEP) for s in sents]
-    model = gensim.models.word2vec.Word2Vec(vocab, size=50, window=5, min_count=1, workers=4)
+    model = gensim.models.word2vec.Word2Vec(vocab, size=W2V_SIZE, window=W2V_WINDOW, min_count=W2V_MIN_COUNT, workers=4)
     return model
 
 def save_model(model, path=MODEL):
@@ -149,11 +181,12 @@ def print_recommend(model, pos, neg):
     print('')
 
 def calc_recommend_books(model, pos, neg):
-    if len(pos) + len(neg) == 0: return []
     ret = []
     vocabs = list(model.vocab.keys())
     pos = set(filter(lambda x:x in vocabs, pos))
     neg = set(filter(lambda x:x in vocabs, neg))
+    if len(pos) + len(neg) == 0:
+        return []
     most_similar = model.most_similar(positive=list(pos), negative=list(neg))
     for i in range(len(most_similar)):
         if i > MAX_RECOMM_WEB:

@@ -1,57 +1,72 @@
 <!doctype html>
 <head>
-    <link charset="utf-8" rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, ,maximum-scale=1.0,user-scalable=no">
+    <style type="text/css">
+    .scroller-wrapper {
+        overflow: scroll;
+        width: 100%;
+    }
+    .book {
+        display: table-cell;
+        padding-right: 0.5em;
+    }
+    .cover {
+        width: 70px;
+        height: 100px;
+    }
+    .title {
+        margin-top: 0.2em;
+        margin-bottom: 0.2em;
+        font-size: 0.7em;
+        max-width: 70px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .author {
+        margin-top: 0.2em;
+        margin-bottom: 0.2em;
+        font-size: 0.7em;
+        max-width: 70px;
+        color: #777;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .score {
+        margin-top: 0.2em;
+        margin-bottom: 0.2em;
+        font-size: 0.7em;
+        margin: 0.3em;
+        color: #777;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .like .hate .remove {
+        font-family: monospace;
+        margin-top: 0.2em;
+        display: inline;
+        color: rgb(0, 0, 0.5);
+        font-size: 0.5em;
+    }
+    .shuffle {
+        margin-top: 1em;
+        -webkit-border-radius: 15px;
+        -moz-border-radius: 15px;
+        border-radius: 15px;
+        color: #000;
+        font-weight: light;
+        border: 1px solid #CCC;
+        padding: 5px 15px;
+    }
+    </style>
 </head>
-<title>书籍推荐</title>
-<a href="/"><h1>书籍推荐</h1></a>
 
-<h2>基于喜欢／不喜欢，为你推荐</h2>
-<div class="scroller-wrapper">
-    <div class="scroller">
-        {% for bookinfo in recommend_books %}
-        <div class="book">
-            <a href="weread://bDetail?bId={{ bookinfo['bookId'] }}"><img class="cover" src="{{ bookinfo['cover'] }}" /></a>
-            <p class='title'>{{ bookinfo['title'] }}</p>
-            <p class='author'>{{ bookinfo['author'] }}</p>
-            <p class='score'>{{ '%.4f' % bookinfo['score'] }}</p>
-            <a href="?like={{ bookinfo['bookId'] }}" class="like">like</a>
-            <a href="?hate={{ bookinfo['bookId'] }}" class="hate">hate</a>
-        </div>
-        {% endfor%}
-    </div>
-</div>
+<title></title>
+<a href="{{ base_url }}"><h1>个性化推荐</h1></a>
 
-<h2>喜欢</h2>
-<div class="scroller-wrapper">
-    <div class="scroller">
-        {% for bookinfo in like_books %}
-        <div class="book">
-            <a href="weread://bDetail?bId={{ bookinfo['bookId'] }}"><img class="cover" src="{{ bookinfo['cover'] }}" /></a>
-            <p class='title'>{{ bookinfo['title'] }}</p>
-            <p class='author'>{{ bookinfo['author'] }}</p>
-            <a href="?like={{ bookinfo['bookId'] }}" class="like">like</a>
-            <a href="?hate={{ bookinfo['bookId'] }}" class="hate">hate</a>
-            <a href="?remove={{ bookinfo['bookId'] }}" class="remove">X</a>
-        </div>
-        {% endfor%}
-    </div>
-</div>
-
-<h2>不喜欢</h2>
-<div class="scroller-wrapper">
-    <div class="scroller">
-        {% for bookinfo in hate_books %}
-        <div class="book">
-            <a href="weread://bDetail?bId={{ bookinfo['bookId'] }}"><img class="cover" src="{{ bookinfo['cover'] }}" /></a>
-            <p class='title'>{{ bookinfo['title'] }}</p>
-            <p class='author'>{{ bookinfo['author'] }}</p>
-            <a href="?like={{ bookinfo['bookId'] }}" class="like">like</a>
-            <a href="?hate={{ bookinfo['bookId'] }}" class="hate">hate</a>
-            <a href="?remove={{ bookinfo['bookId'] }}" class="remove">X</a>
-        </div>
-        {% endfor%}
-    </div>
-</div>
+<p>选择一两本 喜欢/不喜欢 的书，得到个性化推荐结果</p>
 
 <h2>最近阅读</h2>
 <div class="scroller-wrapper">
@@ -68,8 +83,7 @@
     </div>
 </div>
 
-<h2 class="choose">更多</h2>
-<input class="shuffle" type="button" value="换一批" onClick="window.location.reload()">
+<h2>更多</h2>
 <div class="scroller-wrapper">
     <div class="scroller">
         {% for bookinfo in random_books %}
@@ -83,4 +97,52 @@
         {% endfor%}
     </div>
 </div>
+<input class="shuffle" type="button" value="换一换" onClick="window.location.reload()">
 
+<h2>根据你喜欢的</h2>
+<div class="scroller-wrapper">
+    <div class="scroller">
+        {% for bookinfo in like_books %}
+        <div class="book">
+            <a href="weread://bDetail?bId={{ bookinfo['bookId'] }}"><img class="cover" src="{{ bookinfo['cover'] }}" /></a>
+            <p class='title'>{{ bookinfo['title'] }}</p>
+            <p class='author'>{{ bookinfo['author'] }}</p>
+            <a href="?like={{ bookinfo['bookId'] }}" class="like">like</a>
+            <a href="?hate={{ bookinfo['bookId'] }}" class="hate">hate</a>
+            <a href="?remove={{ bookinfo['bookId'] }}" class="remove">X</a>
+        </div>
+        {% endfor%}
+    </div>
+</div>
+
+<h2>不喜欢的</h2>
+<div class="scroller-wrapper">
+    <div class="scroller">
+        {% for bookinfo in hate_books %}
+        <div class="book">
+            <a href="weread://bDetail?bId={{ bookinfo['bookId'] }}"><img class="cover" src="{{ bookinfo['cover'] }}" /></a>
+            <p class='title'>{{ bookinfo['title'] }}</p>
+            <p class='author'>{{ bookinfo['author'] }}</p>
+            <a href="?like={{ bookinfo['bookId'] }}" class="like">like</a>
+            <a href="?hate={{ bookinfo['bookId'] }}" class="hate">hate</a>
+            <a href="?remove={{ bookinfo['bookId'] }}" class="remove">X</a>
+        </div>
+        {% endfor%}
+    </div>
+</div>
+
+<h2>为你推荐</h2>
+<div class="scroller-wrapper">
+    <div class="scroller">
+        {% for bookinfo in recommend_books %}
+        <div class="book">
+            <a href="weread://bDetail?bId={{ bookinfo['bookId'] }}"><img class="cover" src="{{ bookinfo['cover'] }}" /></a>
+            <p class='title'>{{ bookinfo['title'] }}</p>
+            <p class='author'>{{ bookinfo['author'] }}</p>
+            <p class='score'>{{ '%.4f' % bookinfo['score'] }}</p>
+            <a href="?like={{ bookinfo['bookId'] }}" class="like">like</a>
+            <a href="?hate={{ bookinfo['bookId'] }}" class="hate">hate</a>
+        </div>
+        {% endfor%}
+    </div>
+</div>
