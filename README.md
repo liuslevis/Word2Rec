@@ -68,4 +68,8 @@ recommend:
     10  -0.08   从0到1
 ```
 
+```
+ipython3 compare.py > output/compare.txt
+```
+
 http://wo4.weread.qq.com/word2rec/vid/2000007/like/840704?remove=840704

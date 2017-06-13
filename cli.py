@@ -5,8 +5,8 @@ import gensim
 
 CACHE   = shelve.open('./cache/shelve.cache') if sys.platform == 'darwin' else {}
 MODEL   = 'output/word2vec.model'
-PREFS   = ['input/shelfadd_201701_201704_mod100.csv', 'input/shelfadd_201703_201704_mod100.csv', 'input/shelfadd_201704_mod100.csv', 'input/user_prefs.txt'][0]
-HOTLIST = 'input/wrbid_hotlist.txt'
+PREFS   = ['raw/shelfadd_201701_201704_mod100.csv', 'raw/shelfadd_201703_201704_mod100.csv', 'raw/shelfadd_201704_mod100.csv', 'raw/user_prefs.txt'][0]
+HOTLIST = 'raw/wrbid_hotlist.txt'
 SEP     = ' '
 
 W2V_SIZE = 500
@@ -78,10 +78,10 @@ def get_book_title(bookId):
     return (jObj['title'] if 'title' in jObj else '') + ' '+ (jObj['author'] if 'author' in jObj else '') 
 
 def cache_bookinfos():
-    vid = get_col_vals('input/shelfadd_201701_201704_mod100.csv', 'vid', ',', 'input/vids_201701_201704_mod100.txt')
-    b1 = get_col_vals('input/wrbid_hotlist.txt', 'bookid', ',')
-    b2 = get_col_vals('input/wrbid_tag.txt', 'bookid', ',')
-    b3 = get_col_vals('input/shelfadd_201701_201704_mod100.csv', 'bookid', ',')
+    vid = get_col_vals('raw/shelfadd_201701_201704_mod100.csv', 'vid', ',', 'raw/vids_201701_201704_mod100.txt')
+    b1 = get_col_vals('raw/wrbid_hotlist.txt', 'bookid', ',')
+    b2 = get_col_vals('raw/wrbid_tag.txt', 'bookid', ',')
+    b3 = get_col_vals('raw/shelfadd_201701_201704_mod100.csv', 'bookid', ',')
     for bookids in [b3.intersection(b2), b3 - b2, b1]:
         cnt = 0
         for bookid in bookids:
@@ -101,7 +101,7 @@ def read_hotlist_bookids():
     return ret
 
 # {user:{dt1:item1, dt2:item2, ...}}
-def read_prefs(path=PREFS):
+def read_prefs(path, t1=None, t2=None):
     prefs = {}
     with open(path) as f:
         for line in f.readlines():
@@ -111,6 +111,7 @@ def read_prefs(path=PREFS):
                 user = parts[1]
                 item = parts[2]
                 if time.isalpha(): continue
+                if t1 and t2 and not (t1 <= time <= t2): continue
                 pref = prefs[user] if user in prefs else {}
                 pref.update({time:item})
                 prefs.update({user:pref})
@@ -150,14 +151,14 @@ def load_model(path=MODEL):
 
 def calc_item_cf(model):
     print('基于书籍的 word2vec 协同过滤推荐')
-    for vocab in flatmap(model.vocab):
+    for vocab in flatmap(model.wv.vocab):
         print('\n根据 %s 推荐：' % vocab)
         for vocab_score in model.most_similar(positive=[vocab]):
             vocab, score = vocab_score
             print('\t%s %.2f' % (vocab, score))
 
 def print_vocabs(model, shuffle=False):
-    vocabs = list(model.vocab.keys())
+    vocabs = list(model.wv.vocab.keys())
     print('choose:')
     print('\tindex\titem')
     li = random.sample(list(range(len(vocabs))), MAX_CHOICE_CLI) if shuffle else list(range(MAX_CHOICE_CLI))
@@ -165,7 +166,7 @@ def print_vocabs(model, shuffle=False):
         print('\t%d\t%s' % (i, get_book_title(vocabs[i])))
 
 def vocab_index(vocab, model):
-    vocabs = list(model.vocab.keys())
+    vocabs = list(model.wv.vocab.keys())
     return vocabs.index(vocab) if vocab in vocabs else -1
 
 def print_recommend(model, pos, neg):
@@ -180,9 +181,25 @@ def print_recommend(model, pos, neg):
         print('\t%d\t%.2f\t%s' % (index, score, get_book_title(vocab)))
     print('')
 
-def calc_recommend_books(model, pos, neg):
+def calc_recommend_items(model, pos, neg=[]):
     ret = []
-    vocabs = list(model.vocab.keys())
+    vocabs = list(model.wv.vocab.keys())
+    pos = set(filter(lambda x:x in vocabs, pos))
+    neg = set(filter(lambda x:x in vocabs, neg))
+    if len(pos) + len(neg) == 0:
+        return []
+    most_similar = model.most_similar(positive=list(pos), negative=list(neg))
+    for i in range(len(most_similar)):
+        if i > MAX_RECOMM_WEB:
+            break
+        vocab, score = most_similar[i]
+        index = vocab_index(vocab, model)
+        ret.append(vocab)
+    return ret
+
+def calc_recommend_books(model, pos, neg=[]):
+    ret = []
+    vocabs = list(model.wv.vocab.keys())
     pos = set(filter(lambda x:x in vocabs, pos))
     neg = set(filter(lambda x:x in vocabs, neg))
     if len(pos) + len(neg) == 0:
@@ -202,7 +219,7 @@ def calc_recommend_books(model, pos, neg):
 def get_random_books(model):
     ret = []
     hotlist = read_hotlist_bookids()
-    vocabs = list(model.vocab.keys())
+    vocabs = list(model.wv.vocab.keys())
     for bookid in random.sample(hotlist, MAX_CHOICE_WEB_HOT_BOOK):
         ret.append(get_book_info(bookid))
     for bookid in random.sample(vocabs, MAX_CHOICE_WEB_COLD_BOOK):
@@ -210,7 +227,7 @@ def get_random_books(model):
     return ret
     
 def cli_choose(model):
-    vocabs = list(model.vocab.keys())
+    vocabs = list(model.wv.vocab.keys())
     pos = set()
     neg = set()
     shuffle = True
@@ -245,7 +262,7 @@ def cli_choose(model):
 def main():
     # print(get_recent_books(2000007))
     random.seed(99)
-    # prefs = read_prefs()
+    # prefs = read_prefs(PREFS)
     # model = train_model(prefs)
     # save_model(model)
     model = load_model()
