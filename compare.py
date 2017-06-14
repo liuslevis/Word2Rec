@@ -146,18 +146,10 @@ def get_past_items(t1, t2, user, actions, item_prop):
                 ret.add(item)
     return ret
 
-def get_cf_items(w2v, items, topN=5):
-    ret = []
-    vocabs = list(w2v.wv.vocab.keys())
-    for item in items:
-        if item in vocabs:
-            ret += calc_recommend_items(w2v, pos=[item])[:topN]
-    return ret
-
-def gen_test(t1, t2, t3, test_path, user, item_prop, user_prop, hot_items, w2v):
+def gen_test(t1, t2, test_path, user, item_prop, user_prop, hot_items, w2v, topN, recent):
     li = [TRAIN_HEADER]
     past_items = get_past_items(t1, t2, user, actions, item_prop)
-    cand_items = get_cf_items(w2v, past_items) # hot_items
+    cand_items = cf_recommend(t1, t2, w2v, user, actions, topN * 10, recent)
     if user in user_prop:
         for label_item in item_prop:
             if label_item not in past_items and label_item in cand_items:
@@ -195,13 +187,14 @@ def lr_train(train_path, valid_path):
     return lr
 
 def get_user_action(t1, t2, target_user, actions):
-    Tu = set()
+    li = list()
     for ts in actions:
         if t1 <= ts <= t2:
             user = actions[ts][USER_KEY]
             item = actions[ts][ITEM_KEY]
             if user == target_user:
-                Tu.add(item)
+                li.append((item, ts))
+    Tu = list(map(lambda x:x[0], sorted(li, key=lambda x:x[1])))
     return Tu
 
 # @param T ground true list of user-item pairs
@@ -221,39 +214,66 @@ def get_hot_items(actions, topN=500):
         li.append(item)
     return set([elem[0] for elem in collections.Counter(li).most_common(topN)])
 
+
+def cf_recommend(t1, t2, w2v, user, actions, topN=200, recent=10):
+    item_scores = []
+    items = get_user_action(t1, t2, user, actions)
+    for item in items[-recent:]:
+        item_scores += calc_recommend_item_scores(w2v, pos=[item], neg=[], max_recom=topN)
+    item_scores = list(set(item_scores))
+    return set(list(map(lambda x:x[0], sorted(item_scores, key=lambda x:x[1], reverse=True)))[:topN])
+
+
+rec_type = ['LR', 'word2vec'][0]
+n_test_user = 50
+n_recent = 5#10
+topN = 100
+
 user_prop = read_csv_to_dict(user_prop_path, key=USER_KEY, sep=',')
 item_prop = read_csv_to_dict(item_tag_path,  key=ITEM_KEY, sep=',', valmap=lambda x:x.split('|'))
 actions   = read_csv_to_dict(shelfadd_path,  key=ACT_KEY,  sep=',')
 hot_items = get_hot_items(actions)
 w2v       = train_model(read_prefs(PREFS, t1, t2))
+test_users = list(map(lambda x:str(x), pd.read_csv(valid_path).user.values[:n_test_user]))
 
-# gen_train(t1, t2, t3, actions, user_prop, item_prop, train_path, valid_path)
-lr = lr_train(train_path, valid_path)
+lr = None
+if rec_type == 'LR':
+    # gen_train(t1, t2, t3, actions, user_prop, item_prop, train_path, valid_path)
+    lr = lr_train(train_path, valid_path)
 
-topN = 50
 hit = 0
 n_recall = 0
 n_precision = 0
-test_users = list(map(lambda x:str(x), pd.read_csv(valid_path).user.values[:10]))
-for test_user in test_users:#['30135407', '14438807', '2000007']:
-    test_user = str(test_user)
-    print('用户', test_user, '看过：')
-    print_items(get_user_action(t1, t2, test_user, actions))
+for user in test_users:
+    user = str(user)
+    print('用户', user, '看过：')
+    print_items(get_user_action(t1, t2, user, actions))
 
-    print('用户', test_user, '加书架：')
-    Tu = get_user_action(t2, t3, test_user, actions)
+    print('用户', user, '加书架：')
+    Tu = get_user_action(t2, t3, user, actions)
     print_items(Tu)
 
-    print('根据属性', TRAIN_FEATS, '推荐：')
-    gen_test(t1, t2, t3, test_path, test_user, item_prop, user_prop, hot_items, w2v)
-    Ru = lr_recommend(lr, test_path, actions, user_prop, item_prop, topN)
-    print_items(Ru)
+    if rec_type == 'LR':
+        print('根据属性', TRAIN_FEATS, '推荐：')
+        gen_test(t1, t2, test_path, user, item_prop, user_prop, hot_items, w2v, topN, n_recent)
+        Ru = lr_recommend(lr, test_path, actions, user_prop, item_prop, topN)
+        print_items(Ru)
+    elif rec_type == 'word2vec':
+        print('根据协同过滤（word2vec）推荐：')
+        Ru = cf_recommend(t1, t2, w2v, '2000007', actions, topN, n_recent)
+        print_items(Ru)
+
     # print(recall_precision(Tu, Ru))
 
-    print('推荐命中:', len(Tu & Ru))
+    print('该用户推荐命中:', len(set(Tu) & set(Ru)))
     print()
-    hit += len(Tu & Ru)
-    n_recall += len(Ru)
+    hit += len(set(Tu) & set(Ru))
+    n_recall += len(set(Ru))
     n_precision += topN
 
-print('recall/precision:', hit / n_recall, hit / n_precision)
+print('推荐算法', rec_type)
+print('测试用户数量', n_test_user)
+print('topN', topN)
+print('兴趣窗口', n_recent)
+print('召回率 %.6f' % (hit / n_recall))
+print('准确率 %.6f' % (hit / n_precision))

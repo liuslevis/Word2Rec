@@ -181,7 +181,7 @@ def print_recommend(model, pos, neg):
         print('\t%d\t%.2f\t%s' % (index, score, get_book_title(vocab)))
     print('')
 
-def calc_recommend_items(model, pos, neg=[]):
+def calc_recommend_item_scores(model, pos, neg=[], max_recom=10):
     ret = []
     vocabs = list(model.wv.vocab.keys())
     pos = set(filter(lambda x:x in vocabs, pos))
@@ -190,31 +190,26 @@ def calc_recommend_items(model, pos, neg=[]):
         return []
     most_similar = model.most_similar(positive=list(pos), negative=list(neg))
     for i in range(len(most_similar)):
-        if i > MAX_RECOMM_WEB:
+        if i > max_recom:
             break
         vocab, score = most_similar[i]
         index = vocab_index(vocab, model)
-        ret.append(vocab)
+        ret.append((vocab, score))
     return ret
+
+def calc_recommend_items(model, pos, neg=[]):
+    ret = []
+    item_scores = calc_recommend_item_scores(model, pos, neg=[], max_recom=MAX_RECOMM_WEB)
+    for item,score in item_scores:
+        ret.append(item)
+    return item
 
 def calc_recommend_books(model, pos, neg=[]):
     ret = []
-    vocabs = list(model.wv.vocab.keys())
-    pos = set(filter(lambda x:x in vocabs, pos))
-    neg = set(filter(lambda x:x in vocabs, neg))
-    if len(pos) + len(neg) == 0:
-        return []
-    most_similar = model.most_similar(positive=list(pos), negative=list(neg))
-    for i in range(len(most_similar)):
-        if i > MAX_RECOMM_WEB:
-            break
-        vocab, score = most_similar[i]
-        index = vocab_index(vocab, model)
-        bookinfo = get_book_info(vocab)
-        if bookinfo:
-            bookinfo['score'] = score
-            ret.append(bookinfo)
-    return ret
+    item_scores = calc_recommend_item_scores(model, pos, neg=[], max_recom=MAX_RECOMM_WEB)
+    for item,score in item_scores:
+        bookinfo = get_book_info(item)
+        ret.append(bookinfo)
 
 def get_random_books(model):
     ret = []
