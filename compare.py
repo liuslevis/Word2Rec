@@ -1,11 +1,14 @@
 #-*- encoding:utf-8 -*-
 #/usr/bin/ipython3
-import sys,os,time,json,urllib,shelve,random,datetime,collections
+
+# TODO 1 gen_train () fake data: rand -> w2v
+# TODO 2 print score
+
+import sys,os,time,json,urllib,shelve,random,datetime,collections,math
 import gensim
 import numpy as np
 import pandas as pd
 from sklearn import linear_model, datasets
-# import matplotlib.pyplot as plt
 from cli import *
 
 t1 = datetime.datetime(2017, 1, 1).strftime('%s')
@@ -29,7 +32,7 @@ USER_KEY = 'vid'
 ITEM_KEY = 'bookid'
 ACT_KEY = 'timestamp'
 
-POS_NEG_SAMPLE_RATIO = 20
+NEG_POS_SAMPLE_RATIO = 10
 
 def read_csv_to_dict(path, key='vid', sep=',', valmap=None):
     ret = {}
@@ -69,7 +72,7 @@ def gen_lines(user, future_items, past_items, item_prop, user_prop, fake_neg):
 
     if fake_neg:
         user_items = set(future_items).union(set(past_items))
-        k = len(future_items) * POS_NEG_SAMPLE_RATIO
+        k = len(future_items) * NEG_POS_SAMPLE_RATIO
         for fake_item in random.sample(item_prop.keys(), k):
             if fake_item not in user_items:
                 li.append(gen_line(0, user, fake_item, past_items, item_prop, user_prop))
@@ -149,7 +152,7 @@ def get_past_items(t1, t2, user, actions, item_prop):
 def gen_test(t1, t2, test_path, user, item_prop, user_prop, hot_items, w2v, topN, recent):
     li = [TRAIN_HEADER]
     past_items = get_past_items(t1, t2, user, actions, item_prop)
-    cand_items = cf_recommend(t1, t2, w2v, user, actions, topN * 10, recent)
+    cand_items = cf_recommend(t1, t2, w2v, user, actions, topN * 10, recent, items_only=True)
     if user in user_prop:
         for label_item in item_prop:
             if label_item not in past_items and label_item in cand_items:
@@ -161,17 +164,30 @@ def gen_test(t1, t2, test_path, user, item_prop, user_prop, hot_items, w2v, topN
 def lr_recommend(lr, test_path, actions, user_prop, item_prop, topN):
     df = pd.read_csv(test_path)
     if len(df) == 0:
-        return set()
+        return list()
     X,y = df[TRAIN_FEATS], df.label.values
     items = df.item.values
     scores = lr.predict_proba(X)[:,0]
     item_scores = sorted(zip(items, scores), key=lambda x:x[1], reverse=True)[:topN]
-    Ru = set(map(lambda x:str(x[0]), item_scores))
-    return Ru
+    return item_scores
 
-def print_items(items):
+def print_items(items, item_idx=0, get_item_desc=get_book_title, ignore_ts=False, print_console=True):
+    li = []
     for item in items:
-        print('\t', item, get_book_title(item))
+        s = '\t'
+        for i in range(len(item)):
+            if i == item_idx:
+                s += str(item[i]) + ' ' + get_item_desc(item[i]) + ' '
+            elif type(item[i]) in [float, np.float64]:
+                s +=  '%.3f' % item[i] + ' '
+            elif item[i].isdigit() and int(item[i]) > 10000000:
+                if not ignore_ts:
+                    s += time.strftime('%Y-%m-%d %H:%M', time.localtime(int(item[i]))) + ' '
+            else:
+                s += str(item[i]) + ' '
+        li += [s]
+    if print_console: print('\n'.join(li))
+    return li
 
 def lr_train(train_path, valid_path):
     # train
@@ -186,16 +202,21 @@ def lr_train(train_path, valid_path):
     # print(sum(pred == (y == 1)), len(pred == (y == 1)))
     return lr
 
-def get_user_action(t1, t2, target_user, actions):
-    li = list()
+def get_user_action(t1, t2, target_user, actions, items_only):
+    ret = set()
+    items = set()
     for ts in actions:
         if t1 <= ts <= t2:
             user = actions[ts][USER_KEY]
             item = actions[ts][ITEM_KEY]
-            if user == target_user:
-                li.append((item, ts))
-    Tu = list(map(lambda x:x[0], sorted(li, key=lambda x:x[1])))
-    return Tu
+            if user == target_user and item not in items:
+                ret.add((item, ts))
+                items.add(item)
+    item_ts = sorted(list(ret), key=lambda x:x[1])
+    if items_only:
+        return list(map(lambda x:x[0], item_ts))
+    else:
+        return item_ts
 
 # @param T ground true list of user-item pairs
 # @param R recommend list of user-item pairs
@@ -214,66 +235,82 @@ def get_hot_items(actions, topN=500):
         li.append(item)
     return set([elem[0] for elem in collections.Counter(li).most_common(topN)])
 
-
-def cf_recommend(t1, t2, w2v, user, actions, topN=200, recent=10):
+def cf_recommend(t1, t2, w2v, user, actions, topN=200, recent=10, items_only=True):
     item_scores = []
-    items = get_user_action(t1, t2, user, actions)
+    items = get_user_action(t1, t2, user, actions, items_only=True)
     for item in items[-recent:]:
-        item_scores += calc_recommend_item_scores(w2v, pos=[item], neg=[], max_recom=topN)
+        topn = int(math.ceil(topN/recent))
+        item_scores += calc_recommend_item_scores(w2v, pos=[item], neg=[], topn=topn)
     item_scores = list(set(item_scores))
-    return set(list(map(lambda x:x[0], sorted(item_scores, key=lambda x:x[1], reverse=True)))[:topN])
+    item_scores = sorted(item_scores, key=lambda x:x[1], reverse=True)[:topN]
+    if items_only:
+        return list(map(lambda x:x[0], item_scores))
+    else:
+        return item_scores
 
-
-rec_type = ['LR', 'word2vec'][0]
-n_test_user = 50
-n_recent = 5#10
-topN = 100
 
 user_prop = read_csv_to_dict(user_prop_path, key=USER_KEY, sep=',')
 item_prop = read_csv_to_dict(item_tag_path,  key=ITEM_KEY, sep=',', valmap=lambda x:x.split('|'))
 actions   = read_csv_to_dict(shelfadd_path,  key=ACT_KEY,  sep=',')
 hot_items = get_hot_items(actions)
 w2v       = train_model(read_prefs(PREFS, t1, t2))
-test_users = list(map(lambda x:str(x), pd.read_csv(valid_path).user.values[:n_test_user]))
 
-lr = None
-if rec_type == 'LR':
-    # gen_train(t1, t2, t3, actions, user_prop, item_prop, train_path, valid_path)
-    lr = lr_train(train_path, valid_path)
 
-hit = 0
-n_recall = 0
-n_precision = 0
-for user in test_users:
-    user = str(user)
-    print('用户', user, '看过：')
-    print_items(get_user_action(t1, t2, user, actions))
+# rec_type = ['LR', 'word2vec'][0]
+# n_recent = 5
+# topN = 50
+# n_test_user = 50
+# test_users = list(map(lambda x:str(x), pd.read_csv(valid_path).user.values[:n_test_user]))
+for rec_type in ['LR', 'word2vec']:
+    for n_recent in [3,5,10,20,30]:
+        for topN in [50, 100, 200, 300]:
+            for n_test_user in [50, 500]:
+                
+                test_users = list(map(lambda x:str(x), pd.read_csv(valid_path).user.values[:n_test_user]))
+                lr = None
+                if rec_type == 'LR':
+                    # gen_train(t1, t2, t3, actions, user_prop, item_prop, train_path, valid_path)
+                    lr = lr_train(train_path, valid_path)
 
-    print('用户', user, '加书架：')
-    Tu = get_user_action(t2, t3, user, actions)
-    print_items(Tu)
+                hit = 0
+                n_recall = 0
+                n_precision = 0
+                li = []
+                for user in test_users:
+                    user = str(user)
+                    li += ['用户 %s 看过：' % user]
+                    li += print_items(get_user_action(t1, t2, user, actions, items_only=False), print_console=False)
 
-    if rec_type == 'LR':
-        print('根据属性', TRAIN_FEATS, '推荐：')
-        gen_test(t1, t2, test_path, user, item_prop, user_prop, hot_items, w2v, topN, n_recent)
-        Ru = lr_recommend(lr, test_path, actions, user_prop, item_prop, topN)
-        print_items(Ru)
-    elif rec_type == 'word2vec':
-        print('根据协同过滤（word2vec）推荐：')
-        Ru = cf_recommend(t1, t2, w2v, '2000007', actions, topN, n_recent)
-        print_items(Ru)
+                    li += ['用户 %s 加书架：' % user]
+                    item_ts = get_user_action(t2, t3, user, actions, items_only=False)
+                    Tu = set(map(lambda x:x[0], item_ts))
+                    li += print_items(item_ts, print_console=False)
 
-    # print(recall_precision(Tu, Ru))
+                    item_scores = None
+                    if rec_type == 'LR':
+                        li += ['根据属性推荐：%s' % str(TRAIN_FEATS)]
+                        gen_test(t1, t2, test_path, user, item_prop, user_prop, hot_items, w2v, topN, n_recent)
+                        item_scores = lr_recommend(lr, test_path, actions, user_prop, item_prop, topN)
+                    elif rec_type == 'word2vec':
+                        li += ['根据协同过滤（word2vec）推荐：']
+                        item_scores = cf_recommend(t1, t2, w2v, user, actions, topN, n_recent, items_only=False)
+                    Ru = set(map(lambda x:str(x[0]), item_scores))
+                    li += print_items(item_scores, print_console=False)
 
-    print('该用户推荐命中:', len(set(Tu) & set(Ru)))
-    print()
-    hit += len(set(Tu) & set(Ru))
-    n_recall += len(set(Ru))
-    n_precision += topN
+                    # print(recall_precision(Tu, Ru))
 
-print('推荐算法', rec_type)
-print('测试用户数量', n_test_user)
-print('topN', topN)
-print('兴趣窗口', n_recent)
-print('召回率 %.6f' % (hit / n_recall))
-print('准确率 %.6f' % (hit / n_precision))
+                    li += ['该用户推荐命中: %d\n' % len(Tu & Ru)]
+                    hit += len(Tu & Ru)
+                    n_recall += len(Ru)
+                    n_precision += topN
+
+                li = ['推荐算法 %s' % rec_type, 
+                    '测试用户数量 %d' % n_test_user, 
+                    'topN %d' % topN, 
+                    '兴趣窗口 %d' % n_recent, 
+                    '召回率 %.6f' % (hit / n_recall) if n_recall > 0 else 0, 
+                    '准确率 %.6f' % (hit / n_precision) if n_precision > 0 else 0] + li
+
+                with open('output/report_%s_user%d_topn%d_recent%d.txt' % (rec_type, n_test_user, topN, n_recent), 'w') as f:
+                    f.write('\n'.join(li))
+                # print('\n'.join(li))

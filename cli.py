@@ -181,17 +181,15 @@ def print_recommend(model, pos, neg):
         print('\t%d\t%.2f\t%s' % (index, score, get_book_title(vocab)))
     print('')
 
-def calc_recommend_item_scores(model, pos, neg=[], max_recom=10):
+def calc_recommend_item_scores(model, pos, neg=[], topn=10):
     ret = []
     vocabs = list(model.wv.vocab.keys())
     pos = set(filter(lambda x:x in vocabs, pos))
     neg = set(filter(lambda x:x in vocabs, neg))
     if len(pos) + len(neg) == 0:
         return []
-    most_similar = model.most_similar(positive=list(pos), negative=list(neg))
+    most_similar = model.most_similar(positive=list(pos), negative=list(neg), topn=topn)
     for i in range(len(most_similar)):
-        if i > max_recom:
-            break
         vocab, score = most_similar[i]
         index = vocab_index(vocab, model)
         ret.append((vocab, score))
