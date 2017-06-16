@@ -257,7 +257,7 @@ hot_items = get_hot_items(actions)
 w2v       = train_model(read_prefs(PREFS, t1, t2))
 
 
-for rec_type in ['LR']:#['LR', 'word2vec']:
+for rec_type in ['LR', 'word2vec']:
     if rec_type == 'LR':
         # gen_train(t1, t2, t3, actions, user_prop, item_prop, train_path, valid_path)
         lr = lr_train(train_path, valid_path)
