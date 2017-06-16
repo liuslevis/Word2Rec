@@ -259,11 +259,11 @@ w2v       = train_model(read_prefs(PREFS, t1, t2))
 
 for rec_type in ['LR', 'word2vec']:
     if rec_type == 'LR':
-        # gen_train(t1, t2, t3, actions, user_prop, item_prop, train_path, valid_path)
+        gen_train(t1, t2, t3, actions, user_prop, item_prop, train_path, valid_path)
         lr = lr_train(train_path, valid_path)
-    for n_recent in [10]:
-        for topN in [200]:
-            for n_test_user in [50]:
+    for n_recent in [3, 5, 10, 20]:
+        for topN in [50, 100, 200]:
+            for n_test_user in [50, 200]:
                 out_path = 'output/report_user%d_topn%d_recent%d_%s.txt' % (n_test_user, topN, n_recent, rec_type)
                 print('calc %s' % out_path)
                 test_users = list(map(lambda x:str(x), np.unique(pd.read_csv(valid_path).user.values)[:n_test_user]))
