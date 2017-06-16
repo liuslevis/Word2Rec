@@ -31,7 +31,7 @@ USER_KEY = 'vid'
 ITEM_KEY = 'bookid'
 ACT_KEY = 'timestamp'
 
-NEG_POS_SAMPLE_RATIO = 10
+NEG_POS_SAMPLE_RATIO = 1
 
 def read_csv_to_dict(path, key='vid', sep=',', valmap=None):
     ret = {}
@@ -257,21 +257,16 @@ hot_items = get_hot_items(actions)
 w2v       = train_model(read_prefs(PREFS, t1, t2))
 
 
-rec_types = ['LR', 'word2vec']
-n_recents = [5] #[3,5,10,20,30]
-topNs = [50] #[50, 100, 200, 300]
-n_test_user = [50]
-
-for rec_type in rec_types:
+for rec_type in ['LR']:#['LR', 'word2vec']:
     if rec_type == 'LR':
-        gen_train(t1, t2, t3, actions, user_prop, item_prop, train_path, valid_path)
+        # gen_train(t1, t2, t3, actions, user_prop, item_prop, train_path, valid_path)
         lr = lr_train(train_path, valid_path)
-    for n_recent in n_recents:
-        for topN in topNs:
-            for n_test_user in n_test_users:
+    for n_recent in [10]:
+        for topN in [200]:
+            for n_test_user in [50]:
                 out_path = 'output/report_user%d_topn%d_recent%d_%s.txt' % (n_test_user, topN, n_recent, rec_type)
                 print('calc %s' % out_path)
-                test_users = list(map(lambda x:str(x), pd.read_csv(valid_path).user.values[:n_test_user]))
+                test_users = list(map(lambda x:str(x), np.unique(pd.read_csv(valid_path).user.values)[:n_test_user]))
 
                 hit = 0
                 n_recall = 0
