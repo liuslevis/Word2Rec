@@ -2,7 +2,6 @@
 #/usr/bin/ipython3
 
 # TODO 1 gen_train () fake data: rand -> w2v
-# TODO 2 print score
 
 import sys,os,time,json,urllib,shelve,random,datetime,collections,math
 import gensim
@@ -238,6 +237,8 @@ def get_hot_items(actions, topN=500):
 def cf_recommend(t1, t2, w2v, user, actions, topN=200, recent=10, items_only=True):
     item_scores = []
     items = get_user_action(t1, t2, user, actions, items_only=True)
+    if not items:
+        return []
     for item in items[-recent:]:
         topn = int(math.ceil(topN/recent))
         item_scores += calc_recommend_item_scores(w2v, pos=[item], neg=[], topn=topn)
@@ -256,21 +257,21 @@ hot_items = get_hot_items(actions)
 w2v       = train_model(read_prefs(PREFS, t1, t2))
 
 
-# rec_type = ['LR', 'word2vec'][0]
-# n_recent = 5
-# topN = 50
-# n_test_user = 50
-# test_users = list(map(lambda x:str(x), pd.read_csv(valid_path).user.values[:n_test_user]))
-for rec_type in ['LR', 'word2vec']:
-    for n_recent in [3,5,10,20,30]:
-        for topN in [50, 100, 200, 300]:
-            for n_test_user in [50, 500]:
-                
+rec_types = ['LR', 'word2vec']
+n_recents = [5] #[3,5,10,20,30]
+topNs = [50] #[50, 100, 200, 300]
+n_test_user = [50]
+
+for rec_type in rec_types:
+    if rec_type == 'LR':
+        gen_train(t1, t2, t3, actions, user_prop, item_prop, train_path, valid_path)
+        lr = lr_train(train_path, valid_path)
+    for n_recent in n_recents:
+        for topN in topNs:
+            for n_test_user in n_test_users:
+                out_path = 'output/report_user%d_topn%d_recent%d_%s.txt' % (n_test_user, topN, n_recent, rec_type)
+                print('calc %s' % out_path)
                 test_users = list(map(lambda x:str(x), pd.read_csv(valid_path).user.values[:n_test_user]))
-                lr = None
-                if rec_type == 'LR':
-                    # gen_train(t1, t2, t3, actions, user_prop, item_prop, train_path, valid_path)
-                    lr = lr_train(train_path, valid_path)
 
                 hit = 0
                 n_recall = 0
@@ -311,6 +312,6 @@ for rec_type in ['LR', 'word2vec']:
                     '召回率 %.6f' % (hit / n_recall) if n_recall > 0 else 0, 
                     '准确率 %.6f' % (hit / n_precision) if n_precision > 0 else 0] + li
 
-                with open('output/report_%s_user%d_topn%d_recent%d.txt' % (rec_type, n_test_user, topN, n_recent), 'w') as f:
+                with open(out_path, 'w') as f:
                     f.write('\n'.join(li))
                 # print('\n'.join(li))
