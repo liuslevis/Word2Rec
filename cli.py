@@ -6,7 +6,7 @@ import gensim
 CACHE   = shelve.open('./cache/shelve.cache') if sys.platform == 'darwin' else {}
 MODEL   = 'output/word2vec.model'
 PREFS   = ['raw/shelfadd_201701_201704_mod100.csv', 'raw/shelfadd_201703_201704_mod100.csv', 'raw/shelfadd_201704_mod100.csv', 'raw/user_prefs.txt'][0]
-HOTLIST = 'raw/wrbid_hotlist.txt'
+HOTLIST = 'raw/wrbid_hotlist.csv'
 SEP     = ' '
 
 W2V_SIZE = 500
