@@ -26,18 +26,46 @@ trainIndex <- sample(1:nrow(combi), size=round(0.6*nrow(combi)), replace=FALSE)
 train <- combi[trainIndex, ]
 valid <- combi[-trainIndex, ]
 
-# formula <- label ~ read_tag_num
-formula <- label ~ user_sex + user_age + user_city + read_tag_num
+# formula <- label ~ user_sex + 
+#   user_age + 
+#   user_city + 
+#   past_tag_num + 
+#   item_sex_0_ctr + 
+#   item_sex_1_ctr + 
+#   item_sex_2_ctr + 
+#   item_sex_3_ctr + 
+#   item_age_0_ctr + 
+#   item_age_1_ctr + 
+#   item_age_2_ctr + 
+#   item_age_3_ctr + 
+#   item_age_4_ctr + 
+#   item_city_0_ctr + 
+#   item_city_1_ctr + 
+#   item_city_2_ctr + 
+#   item_city_3_ctr + 
+#   item_city_4_ctr
+
+formula <- user_sex +
+user_city +
+past_tag_num +
+item_sex_0_ctr +
+item_sex_1_ctr +
+item_age_0_ctr +
+item_age_1_ctr +
+item_age_2_ctr +
+item_age_3_ctr +
+item_city_0_ctr +
+item_city_1_ctr +
 
 lr.glm <- glm(
     formula=formula,
     data=train,
     family=binomial("logit"))
 
-# lr.stepAIC = stepAIC(lr.glm, direction="backward") #变量筛选方法-逐步回归对方程修正 向后回归法
+lr.stepAIC = stepAIC(lr.glm, direction="backward") #变量筛选方法-逐步回归对方程修正 向后回归法
 
 summary(lr.glm)
-# summary(lr.stepAIC)
+summary(lr.stepAIC)
 
 confusion.glm(train, lr.glm)
 c <- confusion.glm(valid, lr.glm)
