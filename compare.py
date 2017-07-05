@@ -10,64 +10,88 @@ import pandas as pd
 from sklearn import linear_model, datasets
 from cli import *
 
+FEATS_CACHE_PATH = './cache/feats.shelve'
+
 t1 = datetime.datetime(2017, 1, 1).strftime('%s')
 t2 = datetime.datetime(2017, 4, 1).strftime('%s')
 t3 = datetime.datetime(2017, 4, 30).strftime('%s')
 
+# TRAIN_FEATS = [
+#     'past_tag_num',
+#     'user_sex_0',
+#     'user_sex_1',
+#     'user_age_1',
+#     'user_age_2',
+#     'user_age_3',
+#     'user_city_0',
+#     'user_city_1',
+#     'user_city_3',
+#     'item_sex_0_ctr',
+#     'item_sex_1_ctr',
+#     'item_age_0_ctr',
+#     'item_age_1_ctr',
+#     'item_age_3_ctr',
+#     'item_city_0_ctr',
+#     'item_city_1_ctr',
+#     ]
+# TRAIN_FEATS = [
+#     'past_tag_num',
+#     'user_sex_0',
+#     'user_sex_1',
+#     'user_age_1',
+#     'user_age_2',
+#     'user_age_3',
+#     'user_city_0',
+#     'user_city_1',
+#     'user_city_3',
+#     'item_sex_0_ctr',
+#     'item_sex_1_ctr',
+#     'item_age_0_ctr',
+#     'item_age_1_ctr',
+#     'item_age_3_ctr',
+#     'item_city_0_ctr',
+#     'item_city_1_ctr',
+#     ]
+# TRAIN_FEATS = ['user_sex', 'user_age', 'user_city', 'past_tag_num']
 TRAIN_FEATS = [
+    'past_tag_num',
     'user_sex_0',
     'user_sex_1',
-    'user_sex_2',
-    'user_sex_3',
-    'user_age_0',
     'user_age_1',
     'user_age_2',
     'user_age_3',
-    'user_age_4',
     'user_city_0',
     'user_city_1',
-    'user_city_2',
     'user_city_3',
-    'user_city_4',
-
-    'past_tag_num',
-
-    'item_sex_0_ctr', 
-    'item_sex_1_ctr', 
-    'item_sex_2_ctr', 
-    'item_sex_3_ctr', 
-    'item_age_0_ctr', #-,20
-    'item_age_1_ctr', #20,30
-    'item_age_2_ctr', #30,40
-    'item_age_3_ctr', #40,50
-    'item_age_4_ctr', #40,50
-    'item_city_0_ctr',
-    'item_city_1_ctr',
-    'item_city_2_ctr',
-    'item_city_3_ctr',
-    'item_city_4_ctr',
     ]
-
 TRAIN_HEADER = ','.join([
     'label',
     'user',
     'item',
+    'user_sex',
+    'user_age',
+    'user_city',
+
     'user_sex_0',
     'user_sex_1',
     'user_sex_2',
     'user_sex_3',
+
     'user_age_0',
     'user_age_1',
     'user_age_2',
     'user_age_3',
     'user_age_4',
+
     'user_city_0',
     'user_city_1',
     'user_city_2',
     'user_city_3',
     'user_city_4',
+
     'past_tag_num',
     'past_2day_tag_num',
+
     'item_sex_0_ctr',
     'item_sex_1_ctr',
     'item_sex_2_ctr',
@@ -84,20 +108,20 @@ TRAIN_HEADER = ','.join([
     'item_city_4_ctr',
     ])
 
-shelfadd_path  = 'raw/shelfadd_201701_201704_mod100.csv'
-user_prop_path = 'raw/user_prop_201701_201704_mod100.csv'
-item_tag_path  = 'raw/wrbid_tag.csv'
+shelfadd_path  = './raw/shelfadd_201701_201704_mod100.csv'
+user_prop_path = './raw/user_prop_201701_201704_mod100.csv'
+item_tag_path  = './raw/wrbid_tag.csv'
 
-train_path     = 'input/train_201701_201704_mod100.csv'
-valid_path     = 'input/valid_201701_201704_mod100.csv'
-test_path      = 'input/test/test_user_%s.csv'
+train_path     = './input/train_201701_201704_mod100.csv'
+valid_path     = './input/valid_201701_201704_mod100.csv'
+test_path      = './input/test/test_user_%s.csv'
 
 USER_KEY = 'vid'
 ITEM_KEY = 'bookid'
 ACT_KEY = 'timestamp'
 
 NEG_POS_SAMPLE_RATIO = 5
-LR_THRESHOLD = .2 # .59 # LR 输出低于阈值值时，用候选集补齐
+LR_THRESHOLD = .0 # LR 输出低于阈值值时，用候选集补齐
 
 def read_csv_to_dict(path, key='vid', sep=',', valmap=None):
     ret = {}
@@ -156,6 +180,10 @@ def gen_line(label, user, item, feats, item_prop, user_prop):
     li += [str(user)]
     li += [str(item)]
     
+    li += [str(user_prop[user]['sex'])]
+    li += [str(user_prop[user]['age'])]
+    li += [str(user_prop[user]['city'])]
+
     li += [str(1 if sex_no == 0 else 0)]# 'user_sex_0',
     li += [str(1 if sex_no == 1 else 0)]# 'user_sex_1',
     li += [str(1 if sex_no == 2 else 0)]# 'user_sex_2',
@@ -205,7 +233,7 @@ def gen_train(t1, t2, t3, actions, user_prop, item_prop, feats, train_path, vali
     valid_users = all_users - train_users
     
     gen_data(t1, t2, t3, actions, train_users, user_prop, item_prop, feats, train_path, fake_neg=True)
-    gen_data(t1, t2, t3, actions, valid_users, user_prop, item_prop, feats, valid_path, fake_neg=False)
+    gen_data(t1, t2, t3, actions, valid_users, user_prop, item_prop, feats, valid_path, fake_neg=True)
 
 def gen_feats(t1, t2, t3, actions, user_prop, item_prop):
     feats = {} 
@@ -231,7 +259,9 @@ def gen_feats(t1, t2, t3, actions, user_prop, item_prop):
     for user in users:
         feats['user'].setdefault(user, {
             'past_items':[], 
+            'past_item_ts':[], 
             'label_items':[], 
+            'label_item_ts':[], 
             'past_2day_items':[],
         })
     for item in items:
@@ -282,6 +312,7 @@ def gen_feats(t1, t2, t3, actions, user_prop, item_prop):
         if t1 <= ts <= t3:
             if t1 <= ts < t2:
                 feats['user'][user]['past_items'].append(item)
+                feats['user'][user]['past_item_ts'].append((item, ts))
 
                 c_item_sex[sex_no][user_index] += 1
                 c_item_age[age_no][user_index] += 1
@@ -293,6 +324,7 @@ def gen_feats(t1, t2, t3, actions, user_prop, item_prop):
 
             if t2 <= ts <= t3: 
                 feats['user'][user]['label_items'].append(item)
+                feats['user'][user]['label_item_ts'].append((item, ts))
 
             if int(t2) - int(ts) > 2 * 24 * 3600:
                 feats['user'][user]['past_2day_items'].append(item)
@@ -360,36 +392,23 @@ def gen_data(t1, t2, t3, actions, users, user_prop, item_prop, feats, path, fake
     print('gen_data() write:', path)
     return feats
 
-def get_past_items(t1, t2, user, actions, item_prop):
-    ret = set()
-    for ts in actions:
-        if t1 <= ts <= t2:
-            user_ = actions[ts][USER_KEY]
-            item = actions[ts][ITEM_KEY]
-            if user_ == user and item in item_prop:
-                ret.add(item)
-    return ret
-
-def get_past_2day_items(t1, t2, user, actions, item_prop):
-    ret = set()
-    for ts in actions:
-        if t1 <= ts <= t2 and int(t2) - int(ts) > 2 * 24 * 3600:
-            user_ = actions[ts][USER_KEY]
-            item = actions[ts][ITEM_KEY]
-            if user_ == user and item in item_prop:
-                ret.add(item)
-    return ret
-
 # ret cand_item_scores
 def gen_test(t1, t2, test_path, user, item_prop, user_prop, feats, w2v, topN, recent):
-    cand_item_scores = cf_tag_recommend(t1, t2, w2v, user, actions, item_prop, topN, recent, items_only=False)
+    cand_item_scores = cf_recommend(t1, t2, w2v, user, actions, topN, recent, feats, items_only=False)
 
     test_path = test_path % str(user)
     if os.path.exists(test_path):
         return cand_item_scores
+    else:
+        print('gen_test path not exist:', test_path)
 
     li = [TRAIN_HEADER]
-    past_items = get_past_items(t1, t2, user, actions, item_prop)
+    past_items = feats['user'][user]['past_items'] 
+    if not past_items:
+        print('gen_test skip user:', user)
+        with open(test_path, 'w') as f:
+            f.write('\n'.join(li))
+        return list()
     cand_items = list(map(lambda x:x[0], cand_item_scores))
     if user in user_prop:
         for item in item_prop:
@@ -402,8 +421,9 @@ def gen_test(t1, t2, test_path, user, item_prop, user_prop, feats, w2v, topN, re
 
 def lr_recommend(lr, t1, t2, cand_item_scores, test_path, user, actions, user_prop, item_prop, topN, recent):
     df = pd.read_csv(test_path % str(user))
+    # assert len(df) > 0
     if len(df) == 0:
-        return list()
+        return list(), list()
     X,y = df[TRAIN_FEATS], df.label.values
     items = list(map(lambda x:str(x), df.item.values))
     scores = lr.predict_proba(X)[:,1]
@@ -462,7 +482,7 @@ def lr_train(train_path, valid_path):
     # print(sum(pred == (y == 1)), len(pred == (y == 1)))
     return lr
 
-def get_user_action(t1, t2, target_user, actions, items_only, item_prop=None):
+def get_user_action(user, feats, items_only, item_prop=None):
     ret = set()
     items = set()
     for ts in actions:
@@ -508,25 +528,30 @@ def sorted_nondup_items_scores(item_scores):
                 d[item] = score
     return sorted(list(d.items()), key=lambda x:x[1], reverse=True)
 
-def cf_recommend(t1, t2, w2v, user, actions, topN, recent, items_only):
+def cf_recommend(t1, t2, w2v, user, actions, topN, recent, feats, items_only):
     item_scores = []
-    items = get_user_action(t1, t2, user, actions, items_only=True)
-    if not items:
-        return []
-    for item in items[-recent:]:
-        topn = int(math.ceil(topN/recent))
-        item_scores += calc_recommend_item_scores(w2v, pos=[item], neg=[], topn=topn)
+    cache_key = 'cf_item_scores_top%d' % topN
+    if cache_key in feats['user'][user]:
+        item_scores = feats['user'][user][cache_key]
+    else:
+        past_items = feats['user'][user]['past_items']
+        if not past_items:
+            return []
+        for item in past_items[-recent:]:
+            item_scores += calc_recommend_item_scores(w2v, pos=[item], neg=[], topn=topN)
 
-    item_scores = sorted_nondup_items_scores(item_scores)[:topN]
+        item_scores = sorted_nondup_items_scores(item_scores)[:topN]
+        feats['user'][user][cache_key] = item_scores
+
     if items_only:
         return list(map(lambda x:x[0], item_scores))
     else:
         return item_scores
 
 
-def cf_tag_recommend(t1, t2, w2v, user, actions, item_prop, topN, recent, items_only):
-    w2v_item_scores = cf_recommend(t1, t2, w2v, user, actions, topN * 10, recent, items_only=False)
-    past_items = get_past_items(t1, t2, user, actions, item_prop)
+def cf_tag_recommend(t1, t2, w2v, user, actions, item_prop, topN, recent, feats, items_only):
+    w2v_item_scores = cf_recommend(t1, t2, w2v, user, actions, topN * 10, recent, feats, items_only=False)
+    past_items = feats['user'][user]['past_items'] 
 
     item_scores = []
     for item, _ in w2v_item_scores:
@@ -538,9 +563,9 @@ def cf_tag_recommend(t1, t2, w2v, user, actions, item_prop, topN, recent, items_
     else:
         return item_scores
 
-def cf_tag_mul_recommend(t1, t2, w2v, user, actions, item_prop, topN, recent, items_only):
-    w2v_item_scores = cf_recommend(t1, t2, w2v, user, actions, topN * 10, recent, items_only=False)
-    past_items = get_past_items(t1, t2, user, actions, item_prop)
+def cf_tag_mul_recommend(t1, t2, w2v, user, actions, item_prop, topN, recent, feats, items_only):
+    w2v_item_scores = cf_recommend(t1, t2, w2v, user, actions, topN * 10, recent, feats, items_only=False)
+    past_items = feats['user'][user]['past_items'] 
 
     item_scores = []
     for item,score in w2v_item_scores:
@@ -552,35 +577,48 @@ def cf_tag_mul_recommend(t1, t2, w2v, user, actions, item_prop, topN, recent, it
     else:
         return item_scores
 
+def get_feats(t1, t2, t3, actions, user_prop, item_prop):
+    if os.path.exists(FEATS_CACHE_PATH):
+        ret = {}
+        s = shelve.open(FEATS_CACHE_PATH)
+        for key in s:
+            ret[key] = s[key]
+        return ret
+    else:
+        ret = gen_feats(t1, t2, t3, actions, user_prop, item_prop)
+        s = shelve.open(FEATS_CACHE_PATH) 
+        for key in ret:
+            s[key] = feats[key]
+        s.sync()
+        return ret
+
 user_prop = read_csv_to_dict(user_prop_path, key=USER_KEY, sep=',')
 item_prop = read_csv_to_dict(item_tag_path,  key=ITEM_KEY, sep=',', valmap=lambda x:x.split('|'))
 actions   = read_csv_to_dict(shelfadd_path,  key=ACT_KEY,  sep=',')
 hot_items = get_hot_items(actions)
 w2v       = train_model(read_prefs(PREFS, t1, t2))
-# test_users = list(map(lambda x:str(x), np.unique(pd.read_csv(valid_path).user.values)))
-rec_types = ['LR', 'word2vec','word2vec+tag','word2vecxtag']
+feats     = gen_feats(t1, t2, t3, actions, user_prop, item_prop)
+
+test_users = list(map(lambda x:str(x), np.unique(pd.read_csv(valid_path).user.values)))
 
 # test_users = ['10707']
-# test_users = ['10707','24329407','31304907','11252907','10959707','10959707']
-test_users = ['24329407','31304907','11252907','10959707','13654807','13856907','26414907','30309507','3211707','12505207','11659107','7920207','12224807','3427207','8250707','4806807','21616807','15554207','31714007','24627507','39314307','2258207']
+# test_users = ['24329407','31304907','11252907','10959707','13654807','13856907','26414907','30309507','3211707','12505207','11659107','7920207','12224807','3427207','8250707','4806807','21616807','15554207','31714007','24627507','39314307','2258207']
+rec_types = ['LR','word2vec','word2vec+tag','word2vecxtag']
 rec_types = ['LR']
-
-feats = gen_feats(t1, t2, t3, actions, user_prop, item_prop)
-
-
 for rec_type in rec_types:
     if rec_type == 'LR':
         if not os.path.exists(train_path) or not os.path.exists(valid_path):
+            # TODO 这里不能用 t2 t3 的数据
             gen_train(t1, t2, t3, actions, user_prop, item_prop, feats, train_path, valid_path)
         lr = lr_train(train_path, valid_path)
     for n_recent in [15]:
         for topN in [200]:
-            for n_test_user in [50]:
+            for n_test_user in [500]:
                 n_test_user = min(n_test_user, len(test_users))
 
                 out_path = 'output/report_user%d_topn%d_recent%d_%s.txt' % (n_test_user, topN, n_recent, rec_type)
                 if rec_type == 'LR':
-                    out_path = 'output/report_user%d_topn%d_recent%d_%s_feat%d.txt' % (n_test_user, topN, n_recent, rec_type, len(TRAIN_FEATS))
+                    out_path = 'output/report_user%d_topn%d_recent%d_%s_feat%d_threshold%.2f.txt' % (n_test_user, topN, n_recent, rec_type, len(TRAIN_FEATS), LR_THRESHOLD)
                 print('calc %s' % out_path)
 
                 hit = 0
@@ -589,32 +627,39 @@ for rec_type in rec_types:
                 li = []
                 for user in test_users[:n_test_user]:
                     user = str(user)
-                    read_item_ts = get_user_action(t1, t2, user, actions, items_only=False, item_prop=item_prop)
-                    add_item_ts = get_user_action(t2, t3, user, actions, items_only=False, item_prop=item_prop)
+                    user_index = test_users.index(user)
+                    if user_index % 1 == 0: print('  %d / %d' % (user_index, n_test_user))
+                    # past_item_ts = get_user_action(user, feats, items_only=False, item_prop=item_prop)
+                    # label_item_ts = get_user_action(user, feats, items_only=False, item_prop=item_prop)
+                    past_item_ts = feats['user'][user]['past_item_ts']
+                    label_item_ts = feats['user'][user]['label_item_ts']
 
-                    li += ['用户 %s 看过 %d 本：' % (user, len(read_item_ts))]
-                    li += print_items(read_item_ts, print_console=False)
+                    li += ['用户 %s 看过 %d 本：' % (user, len(past_item_ts))]
+                    li += print_items(past_item_ts, print_console=False)
 
-                    li += ['用户 %s 加书架 %d 本：' % (user, len(add_item_ts))]
-                    Tu = set(map(lambda x:x[0], add_item_ts))
-                    li += print_items(add_item_ts, print_console=False)
+                    li += ['用户 %s 加书架 %d 本：' % (user, len(label_item_ts))]
+                    Tu = set(map(lambda x:x[0], label_item_ts))
+                    li += print_items(label_item_ts, print_console=False)
 
                     item_scores = None
                     if rec_type == 'LR':
                         cand_item_scores = gen_test(t1, t2, test_path, user, item_prop, user_prop, feats, w2v, topN, n_recent)
                         lr_item_scores, item_scores = lr_recommend(lr, t1, t2, cand_item_scores, test_path, user, actions, user_prop, item_prop, topN, n_recent)
-                        li += ['根据属性 %s 推荐 %d 本，候选集补齐 %d 本：' % (str(TRAIN_FEATS), len(lr_item_scores), len(item_scores))]
+                        li += ['根据属性 %s 推荐 %d 本，候选集 %d 补齐至 %d 本：' % (str(TRAIN_FEATS), len(lr_item_scores), len(cand_item_scores), len(item_scores))]
 
                     elif rec_type == 'word2vec':
-                        item_scores = cf_recommend(t1, t2, w2v, user, actions, topN, n_recent, items_only=False)
+                        item_scores = cf_recommend(t1, t2, w2v, user, actions, topN, n_recent, feats, items_only=False)
                         li += ['根据协同过滤（word2vec）推荐 %d 本：' % (len(item_scores))]
                     elif rec_type == 'word2vec+tag':
-                        item_scores = cf_tag_recommend(t1, t2, w2v, user, actions, item_prop, topN, n_recent, items_only=False)
+                        item_scores = cf_tag_recommend(t1, t2, w2v, user, actions, item_prop, topN, n_recent, feats, items_only=False)
                         li += ['根据协同过滤（word2vec+tag）推荐 %d 本：' % (len(item_scores))]
                     elif rec_type == 'word2vecxtag':
-                        item_scores = cf_tag_mul_recommend(t1, t2, w2v, user, actions, item_prop, topN, n_recent, items_only=False)
+                        item_scores = cf_tag_mul_recommend(t1, t2, w2v, user, actions, item_prop, topN, n_recent, feats, items_only=False)
                         li += ['根据协同过滤（word2vec x tag）推荐 %d 本：' % (len(item_scores))]
-                    
+
+                    if not item_scores: 
+                        continue
+
                     Ru = set(map(lambda x:str(x[0]), item_scores))
                     li += print_items(item_scores, print_console=False)
 
@@ -624,8 +669,8 @@ for rec_type in rec_types:
                     li += print_book_titles(Tu & Ru)
 
                     hit += len(Tu & Ru)
-                    n_recall += len(Ru)
-                    n_precision += topN
+                    n_recall += len(Tu)
+                    n_precision += len(Ru)
 
                 li = ['推荐算法 %s' % rec_type, 
                     '算法阈值 %.4f' % LR_THRESHOLD,

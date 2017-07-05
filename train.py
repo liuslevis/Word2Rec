@@ -24,44 +24,65 @@ TRAIN_FEATS = [
     'item_city_0_ctr',
     'item_city_1_ctr',
     ]
+TRAIN_FEATS = [
+    'user_sex',
+    'user_age',
+    'user_city',
+    'past_tag_num',
+    'user_sex_0',
+    'user_sex_1',
+    'user_age_1',
+    'user_age_2',
+    'user_age_3',
+    'user_city_0',
+    'user_city_1',
+    'user_city_3',
+    'item_sex_0_ctr',
+    'item_sex_1_ctr',
+    'item_age_0_ctr',
+    'item_age_1_ctr',
+    'item_age_3_ctr',
+    'item_city_0_ctr',
+    'item_city_1_ctr',
+    ]
+df = pd.read_csv(train_path)
+X_train, y_train = df[TRAIN_FEATS].values, df.label.values
+
+df = pd.read_csv(valid_path)
+X_valid, y_valid = df[TRAIN_FEATS].values, df.label.values
+
+lr = linear_model.LogisticRegression(C=1e4)
+lr.fit(X_train, y_train)
+
+threshold = 0.2
+
+print("train summary:")
+print(classification_report(y_true=y_train, y_pred=np.where(lr.predict_proba(X_train)[:,1] > threshold, 1, 0)))
+
+print("test summary:")
+print(classification_report(y_true=y_valid, y_pred=np.where(lr.predict_proba(X_valid)[:,1] > threshold, 1, 0)))
 
 # df = pd.read_csv(train_path)
-# X_train, y_train = df[TRAIN_FEATS].values, df.label.values
+# X,y = df[TRAIN_FEATS].values, df.label.values
+# kf = KFold(n_splits=2)
+# lr = None
+# for train, test in kf.split(X):
+#     print()
+#     print('kfold train:%d test:%d' % (len(train), len(test)))
+#     X_train = X[train]
+#     y_train = y[train]
+#     X_test = X[test]
+#     y_test = y[test]
+#     lr = linear_model.LogisticRegression(C=1e5)
+#     lr.fit(X_train, y_train)
 
-# df = pd.read_csv(valid_path)
-# X_valid, y_valid = df[TRAIN_FEATS].values, df.label.values
+#     y_true = y_train
+#     y_pred = np.where(lr.predict_proba(X_train)[:,1] > threshold, 1, 0)
+#     print("train summary:")
+#     print(classification_report(y_true, y_pred))
 
-# lr = linear_model.LogisticRegression(C=1e4)
-# lr.fit(X_train, y_train)
-
-# print("train summary:")
-# print(classification_report(y_true=y_train, y_pred=lr.predict(X_train)))
-
-# print("test summary:")
-# print(classification_report(y_true=y_valid, y_pred=lr.predict(X_valid)))
-
-df = pd.read_csv(train_path)
-X,y = df[TRAIN_FEATS].values, df.label.values
-kf = KFold(n_splits=2)
-lr = None
-threshold = 0.2
-for train, test in kf.split(X):
-    print()
-    print('kfold train:%d test:%d' % (len(train), len(test)))
-    X_train = X[train]
-    y_train = y[train]
-    X_test = X[test]
-    y_test = y[test]
-    lr = linear_model.LogisticRegression(C=1e5)
-    lr.fit(X_train, y_train)
-
-    y_true = y_train
-    y_pred = np.where(lr.predict_proba(X_train)[:,1] > threshold, 1, 0)
-    print("train summary:")
-    print(classification_report(y_true, y_pred))
-
-    y_true = y_test
-    y_pred = np.where(lr.predict_proba(X_test)[:,1] > threshold, 1, 0)
-    print("valid summary:")
-    print(classification_report(y_true, y_pred))
+#     y_true = y_test
+#     y_pred = np.where(lr.predict_proba(X_test)[:,1] > threshold, 1, 0)
+#     print("valid summary:")
+#     print(classification_report(y_true, y_pred))
 
