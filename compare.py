@@ -7,7 +7,7 @@ import sys,os,time,json,urllib,shelve,random,datetime,collections,math
 import gensim
 import numpy as np
 import pandas as pd
-from sklearn import linear_model, datasets
+from sklearn import linear_model, datasets, ensemble
 from cli import *
 
 FEATS_CACHE_PATH = './cache/feats.shelve'
@@ -53,17 +53,58 @@ t3 = datetime.datetime(2017, 4, 30).strftime('%s')
 #     'item_city_1_ctr',
 #     ]
 # TRAIN_FEATS = ['user_sex', 'user_age', 'user_city', 'past_tag_num']
-TRAIN_FEATS = [
-    'past_tag_num',
+# TRAIN_FEATS = [
+#     'past_tag_num',
+#     'user_sex_0',
+#     'user_sex_1',
+#     'user_age_1',
+#     'user_age_2',
+#     'user_age_3',
+#     'user_city_0',
+#     'user_city_1',
+#     'user_city_3',
+#     ]
+FULL_FEATS = [
+    'user_sex',
+    'user_age',
+    'user_city',
+
     'user_sex_0',
     'user_sex_1',
+    'user_sex_2',
+    'user_sex_3',
+
+    'user_age_0',
     'user_age_1',
     'user_age_2',
     'user_age_3',
+    'user_age_4',
+
     'user_city_0',
     'user_city_1',
+    'user_city_2',
     'user_city_3',
-    ]
+    'user_city_4',
+
+    'past_tag_num',
+    'past_2day_tag_num',
+
+    'item_sex_0_ctr',
+    'item_sex_1_ctr',
+    'item_sex_2_ctr',
+    'item_sex_3_ctr',
+    'item_age_0_ctr',
+    'item_age_1_ctr',
+    'item_age_2_ctr',
+    'item_age_3_ctr',
+    'item_age_4_ctr',
+    'item_city_0_ctr',
+    'item_city_1_ctr',
+    'item_city_2_ctr',
+    'item_city_3_ctr',
+    'item_city_4_ctr',
+]
+
 TRAIN_HEADER = ','.join([
     'label',
     'user',
@@ -592,6 +633,30 @@ def get_feats(t1, t2, t3, actions, user_prop, item_prop):
         s.sync()
         return ret
 
+def gbdt_train(train_path, valid_path):
+    params = {'n_estimators': 50, 'max_depth': 4, 'min_samples_split': 2, 'learning_rate': 0.1}
+    gbdt = ensemble.GradientBoostingClassifier(**params)
+    df = pd.read_csv(train_path)
+    X,y = df[FULL_FEATS], df.label.values
+    gbdt.fit(X, y)
+    # test
+    # df = pd.read_csv(valid_path)
+    # X,y = df[FULL_FEATS], df.label.values
+    # pred = gbdt.predict_proba(X)[:,0] > 0.9
+    # print(sum(pred == (y == 1)), len(pred))
+    return gbdt
+
+def model_recommend(model, feat_li, t1, t2, test_path, user, topN, n_recent):
+    df = pd.read_csv(test_path % str(user))
+    if len(df) == 0:
+        return list()
+    X,y = df[feat_li], df.label.values
+    items = list(map(lambda x:str(x), df.item.values))
+    scores = model.predict_proba(X)[:,1]
+    item_scores = sorted_nondup_items_scores(list(filter(lambda x:x[1] > LR_THRESHOLD, sorted(zip(items, scores), key=lambda x:x[1], reverse=True))))
+    return item_scores[:topN]
+
+
 user_prop = read_csv_to_dict(user_prop_path, key=USER_KEY, sep=',')
 item_prop = read_csv_to_dict(item_tag_path,  key=ITEM_KEY, sep=',', valmap=lambda x:x.split('|'))
 actions   = read_csv_to_dict(shelfadd_path,  key=ACT_KEY,  sep=',')
@@ -601,15 +666,24 @@ feats     = gen_feats(t1, t2, t3, actions, user_prop, item_prop)
 
 test_users = list(map(lambda x:str(x), np.unique(pd.read_csv(valid_path).user.values)))
 
+lr_feats = TRAIN_FEATS
+gbdt_feats = FULL_FEATS
+
 # test_users = ['10707']
 # test_users = ['24329407','31304907','11252907','10959707','13654807','13856907','26414907','30309507','3211707','12505207','11659107','7920207','12224807','3427207','8250707','4806807','21616807','15554207','31714007','24627507','39314307','2258207']
-rec_types = ['LR','word2vec','word2vec+tag','word2vecxtag']
-rec_types = ['LR']
+rec_types = ['LR','GBDT', 'word2vec','word2vec+tag','word2vecxtag']
+
+
 for rec_type in rec_types:
-    if rec_type == 'LR':
+    gbdt = None
+    lr = None
+    if rec_type == 'LR' or rec_type == 'GBDT':
         if not os.path.exists(train_path) or not os.path.exists(valid_path):
             # TODO 这里不能用 t2 t3 的数据
             gen_train(t1, t2, t3, actions, user_prop, item_prop, feats, train_path, valid_path)
+    if rec_type == 'GBDT':
+        gbdt = gbdt_train(train_path, valid_path)
+    if rec_type == 'LR':
         lr = lr_train(train_path, valid_path)
     for n_recent in [15]:
         for topN in [200]:
@@ -628,9 +702,8 @@ for rec_type in rec_types:
                 for user in test_users[:n_test_user]:
                     user = str(user)
                     user_index = test_users.index(user)
-                    if user_index % 1 == 0: print('  %d / %d' % (user_index, n_test_user))
-                    # past_item_ts = get_user_action(user, feats, items_only=False, item_prop=item_prop)
-                    # label_item_ts = get_user_action(user, feats, items_only=False, item_prop=item_prop)
+                    if user_index % 10 == 0: print('  %d / %d' % (user_index, n_test_user))
+
                     past_item_ts = feats['user'][user]['past_item_ts']
                     label_item_ts = feats['user'][user]['label_item_ts']
 
@@ -644,9 +717,10 @@ for rec_type in rec_types:
                     item_scores = None
                     if rec_type == 'LR':
                         cand_item_scores = gen_test(t1, t2, test_path, user, item_prop, user_prop, feats, w2v, topN, n_recent)
-                        lr_item_scores, item_scores = lr_recommend(lr, t1, t2, cand_item_scores, test_path, user, actions, user_prop, item_prop, topN, n_recent)
-                        li += ['根据属性 %s 推荐 %d 本，候选集 %d 补齐至 %d 本：' % (str(TRAIN_FEATS), len(lr_item_scores), len(cand_item_scores), len(item_scores))]
-
+                        item_scores = model_recommend(lr, lr_feats, t1, t2, test_path, user, topN, n_recent)
+                        li += ['根据属性 %s 推荐 %d 本：' % (str(lr_feats), len(item_scores))]
+                    elif rec_type == 'GBDT':
+                        item_scores = model_recommend(gbdt, gbdt_feats, t1, t2, test_path, user, topN, n_recent)
                     elif rec_type == 'word2vec':
                         item_scores = cf_recommend(t1, t2, w2v, user, actions, topN, n_recent, feats, items_only=False)
                         li += ['根据协同过滤（word2vec）推荐 %d 本：' % (len(item_scores))]
